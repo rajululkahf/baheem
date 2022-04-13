@@ -347,7 +347,7 @@ In this example, the caller is expected to initialise a $128$ bits key
 $\mathbf{k}$, a pair of random pads, $\mathbf{p}$ and $\mathbf{q}$, each of
 which is $\mathtt{len} \times 64$ bits long, in order to encrypt a
 $\mathtt{len} \times 64$ bits long cleartext message $\mathbf{m}$.  The
-encryption happens in place, so the caller does not have to allocate
+encryption happens in-place, so the caller does not have to allocate
 separate memory for the ciphertext.
 
 \begin{verbatim}
@@ -368,7 +368,7 @@ void baheem_enc(
 \end{verbatim}
 
 Likewise, the following is an example implementing the corresponding
-decryption function.
+in-place decryption function.
 
 \begin{verbatim}
 void baheem_dec(... same input ...) {
