@@ -25,7 +25,7 @@ many CPU cores can perform 0.5 / n cpu cycles per byte per wall-clock time.
 While Băhēm has an overhead of 2 extra bits per every encrypted cleartext
 bit, its early single-threaded prototype implementation achieves a faster
 /decryption/ than OpenSSL's ChaCha20's, despite the fact that Băhēm's
-ciphertext is 3 times larger than ChaCha20's.  This support that the 2 bit
+ciphertext is 3 times larger than ChaCha20's.  This supports that the 2 bit
 overhead is practically negligible for most applications.
 
 Băhēm's early prototype has a slower /encryption/ time than OpenSSL's
