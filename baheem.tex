@@ -381,7 +381,7 @@ void baheem_dec(... same input ...) {
 }
 \end{verbatim}
 
-\subsection{A File Encryption Tool:  Alyal}
+\subsection{An Early Prototype:  Alyal}
 Alyal is an early single-threaded prototype implementation that uses
 \baheem\ to encrypt and decrypt files, mainly to demonstrate \baheem's
 practical utility with real-world scenarios.  Internally, Alyal uses the
@@ -436,11 +436,8 @@ makes the encryption differ from the decryption).
 \section{Conclusion}
 This paper proposed \baheem\ with the following properties:
 \begin{description}[itemsep=0em]
-    \item[Simple.] \baheem's simplicity effectively translates into less
-        expect number of implementation bugs, which, in turn, implies
-        higher practical security.
-    \item[Proven security.] No cryptanalysis can degrade its security
-        below $\entropy(\mathbf{k})$ bits.
+    \item[Secure.] \baheem\ is proven that no cryptanalysis can degrade its
+        security below $\entropy(\mathbf{k})$ bits.
     \item[Fast.] Requires only $4$ \glspl{xor} per encryption or decryption
         alike.  Highly parallelisable as the encryption, or decryption, of
         any bit is independent of other bits.
@@ -455,6 +452,8 @@ This paper proposed \baheem\ with the following properties:
         advance.  This is confirmed by the currently fast decryption speed,
         which only differs from the encryption by the fact that it does not
         pull bits from the \gls{trng}.
+    \item[Simple.] \baheem's simplicity implies into fewer expected number
+        of implementation bugs, and therefore higher practical security.
 \end{description}
 
 Future work may include developing a multi-threaded implementation with
