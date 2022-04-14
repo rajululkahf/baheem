@@ -413,35 +413,43 @@ earlier in this section.
 
 \subsubsection{Benchmark}
 \Cref{tbl_benchmark} shows an early benchmark that was performed on a
-machine with Intel(R) Core(TM) i5-3570K CPU @ 3.40GHz.
+machine with a 3.4GHz Intel Core i5-3570K CPU, 32GB RAM, 7200 RPM hard
+disks, Linux 5.17.1-gentoo-x86-64, and OpenSSL 1.1.1n.
 
 \begin{table}[tbh]
     \centering
-    \begin{tabular}{rll}
-                        & OpenSSL   & Alyal\\
-                        & ChaCha20  & \baheem\\\hline
-        Encrypt 500MB   & \textbf{1.07} secs & 4.25 secs\\
-                        & \textbf{1.03} secs & 4.28 secs\\
-                        & \textbf{1.05} secs & 4.30 secs\\\hline
-        Decrypt 500MB   & 1.07 secs & \textbf{0.85} secs\\
-                        & 1.09 secs & \textbf{0.91} secs\\
-                        & 1.15 secs & \textbf{0.84} secs\\
+    \begin{tabular}{rcll}
+                & OpenSSL            & \multicolumn{2}{c}{Alyal}                 \\
+                & ChaCha20           & \multicolumn{2}{c}{\baheem}               \\
+                &                    & \texttt{/dev/random} & \texttt{file.rand} \\\hline
+        Encrypt & \textbf{1.07} secs & 4.25 secs            & 1.77 secs          \\
+        500MB   & \textbf{1.03} secs & 4.28 secs            & 1.76 secs          \\
+                & \textbf{1.05} secs & 4.30 secs            & 1.76 secs          \\\hline
+        Decrypt & 1.07 secs          & \multicolumn{2}{c}{\textbf{0.85} secs}    \\
+        500MB   & 1.09 secs          & \multicolumn{2}{c}{\textbf{0.91} secs}    \\
+                & 1.15 secs          & \multicolumn{2}{c}{\textbf{0.84} secs}    \\
     \end{tabular}
     \caption{Wall-clock run-time comparison between OpenSSL's ChaCha20, and
-    Alyal's \baheem\ implementation.}
+    Alyal's \baheem\ implementation with two sources as the \gls{trng}:
+    \texttt{/dev/random} and \texttt{file.rand};  the latter is simply
+    \texttt{/dev/random} that was prepared in advance.}
     \label{tbl_benchmark}
 \end{table}
 
-The encryption and decryption functions of \baheem\ are identical in their
-number of instructions and the amount of IO operations, except that the
-encryption one pulls bits from a \gls{trng}, while the decryption gets the
-random bits by decrypting them from the input file.
-
-This early benchmark servers is an evidence that the $2$ bits overhead is
-practically negligible, and that preparing the random bits in advance, to
-avoid calling a \gls{trng} on demand, will ensure a faster \baheem\ even
-during its encryption (since calling the \gls{trng} is the only aspect that
-makes the encryption differ from the decryption).
+\Cref{tbl_benchmark} shows that, while the early \baheem\ prototype, Alyal,
+has a faster decryption run-time than OpenSSL's ChaCha20, it has slower
+encryption run-time. However:
+\begin{enumerate}
+    \item \baheem's provable security may justify waiting the $3$ extra
+        seconds for the 500MB data, specially that many user applications
+        involve encrypting much smaller data sizes with unnoticeable time
+        difference
+    \item Preparing the random bits in advance significantly reduces the
+        delay as shown with the \texttt{file.rand} case, and can be
+        optimised further should it be prepared in memory.
+    \item Alyal is single-threaded despite \baheem's high parallelism.
+        This can make future updates even faster.
+\end{enumerate}
 
 \section{Conclusion}
 This paper proposed \baheem\ with the following properties:
@@ -465,9 +473,6 @@ This paper proposed \baheem\ with the following properties:
     \item[Simple.] \baheem's simplicity implies fewer expected number of
         implementation bugs, and therefore higher practical security.
 \end{description}
-
-Future work may include developing a multi-threaded implementation with
-\gls{trng} optimisations.
 
 \bibliographystyle{unsrt}
 \bibliography{references}
