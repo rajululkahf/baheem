@@ -13,4 +13,4 @@ $(NAME).pdf: $(NAME).tex references.bib
 
 .PHONY: clean
 clean:
-	rm -f *.log *.aux *.toc *.bbl *.blg *.acn *.glo *.ist
+	rm -f *.log *.aux *.toc *.bbl *.blg *.acn *.glo *.ist *.out

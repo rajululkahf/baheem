@@ -1,5 +1,6 @@
 [Alyal](https://codeberg.org/rajululkahf/alyal) is a file encryption and
-decryption tool based on Băhēm.
+decryption tool based on [Ġasaq](https://codeberg.org/rajululkahf/ghasaq)
+and [Băhēm](https://codeberg.org/rajululkahf/baheem).
 
 ## Overview
 
