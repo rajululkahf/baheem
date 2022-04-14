@@ -1,5 +1,10 @@
 \documentclass[twocolumn,hidelinks]{article}
 \usepackage{orcidlink}
+\usepackage[
+    type={CC},
+    modifier={by-nc-sa},
+    version={4.0},
+]{doclicense}
 \usepackage[margin=1in,columnsep=1em]{geometry}
 \usepackage{enumitem} % to control gaps in description lists
 \usepackage{url}
@@ -110,6 +115,10 @@ ciphertext to retrieve the predefined string.
 
 \tableofcontents
 \vfill
+\hrule
+\footnotesize
+\doclicenseThis
+\normalsize
 
 \section{Background}
 When Alice and Bob privately met last time, they used a \gls{trng} to generate
