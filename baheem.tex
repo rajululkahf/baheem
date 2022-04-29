@@ -2,8 +2,11 @@
 \usepackage{orcidlink}
 \usepackage[
     type={CC},
-    modifier={by-nc-sa},
+    modifier={by},
     version={4.0},
+    imagedistance={.5em},
+    %imagewidth={5.5em},
+    %imagemodifier={-80x15},
 ]{doclicense}
 \usepackage[margin=1in,columnsep=1em]{geometry}
 \usepackage{enumitem} % to control gaps in description lists
@@ -13,8 +16,16 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{complexity}
+\usepackage{cancel}
 \usepackage[ruled,vlined]{algorithm2e}
+\usepackage{nicematrix}
 \newcommand{\baheem}{Băhēm}
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
 \DeclareMathOperator{\random}{random}
 \DeclareMathOperator{\enc}{enc}
 \DeclareMathOperator{\dec}{dec}
@@ -26,7 +37,11 @@
 \newacronym{otp}{OTP}{one-time pad}
 \newacronym{xor}{XOR}{bitwise exclusive-or operation}
 \newtheorem{theorem}{Theorem}[section]
+\newtheorem{note}{Note}[section]
 \renewcommand\qedsymbol{$\blacksquare$}
+\newcommand{\pq}[1]{\cellcolor{red!20}#1}
+\newcommand{\ph}[1]{\cellcolor{blue!20}#1}
+\newcommand{\qh}[1]{\cellcolor{green!20}#1}
 \usepackage{cleveref} % must be loaded last
 \begin{document}
 
@@ -34,7 +49,7 @@
     \Huge
     \baheem\\
     \Large
-    A Provably Secure Symmetric Cipher\\
+    Provably Secure Symmetric Cipher\\
     \normalsize
     \vspace{0.5em}
     M. Rajululkahf\,\orcidlink{0000-0001-9061-2921}\footnote{Author's e-mail address: \{last
@@ -44,319 +59,266 @@
     \today\\
 \end{center}
 
-\noindent
-{\color{red}\textbf{Update---}\baheem\ is not secure at all.  I did many
-silly mistakes.  This paper rightfully got an immediate rejection rejection
-from the Journal of Cryptology.}
-
 \section*{Overview}
-This paper proposes \baheem;  a symmetric cipher that, when used with a
-pre-shared secret key $\mathbf{k}$, no cryptanalysis can degrade its
-security below $\entropy(\mathbf{k})$ bits of entropy, even under Grover's
-algorithm \cite{10.1145/237814.237866} or even if it turned out that $\P =
-\NP$.
+This paper proposes \baheem;  a symmetric cipher that, when given a
+random-looking key $\mathbf{k}$, a \gls{trng} and a cleartext message
+$\mathbf{m}$ to encrypt, no cryptanalysis can degrade its security below
+$\min(\entropy(\mathbf{m}), \entropy(\mathbf{k}))$ bits of entropy, even
+under Grover's algorithm \cite{10.1145/237814.237866} or even if it turned
+out that $\P = \NP$.
 
-\baheem's security is very similar to that of the \gls{otp}, except that it
-does not require the communicating parties the inconvenient constraint of
-generating a large random pad in advance of their communication. Instead,
-\baheem\ allows the parties to agree on a small pre-shared secret key, such
-as $|\mathbf{k}| = 128$ bits, and then generate their random pads in the
-future as they go.
+\baheem\ is also is highly parallelise-able, and requires only three
+additions and a single \gls{xor}.
 
-For any operation, be it encryption or decryption, \baheem\ performs only
-$4$ \glspl{xor} per cleartext bit including its $2$ overhead bits.  If it
-takes a CPU $1$ cycle to perform an \gls{xor} between a pair of $64$ bit
-variables, then a \baheem\ operation takes $4 \div 8 = 0.5$ cycles
-per byte.  Further, all \baheem's operations are independent, therefore a
-system with $n$ many CPU cores can perform $0.5 \div n$ cpu cycles per byte
-per wall-clock time.
-
-While \baheem\ has an overhead of $2$ extra bits per every encrypted
-cleartext bit, its early single-threaded prototype implementation achieves
-a faster \emph{decryption} than OpenSSL's ChaCha20's, despite the fact that
-\baheem's ciphertext is $3$ times larger than ChaCha20's.  This supports
-that the $2$ bit overhead is practically negligible for most applications.
-
-\baheem's early prototype has a slower \emph{encryption} time than
-OpenSSL's ChaCha20 due to its use of a \gls{trng}.  However, this can be
-trivially optimised by gathering the true random bits in advance, so
-\baheem\ gets the entropy conveniently when it runs.
-
-Aside from \baheem's usage as a provably-secure general-purpose symmetric
-cipher, it can also be used, in some applications such as password
-verification, to enhance existing hashing functions to become provably
-one-way, by using \baheem\ to encrypt a predefined string using the hash as
-the key.  A password is then verified if its hash decrypts the \baheem\
-ciphertext to retrieve the predefined string.
+Its early prototype, Alyal, achieved similar run-time speeds to OpenSSL's
+ChaCha20 \cite{chacha20}; slightly faster decryption, while slightly slower
+encryption when the \gls{trng} was prepared in a file in advance.  Future
+versions, with better \gls{trng} optimisations, should be able to enable
+the prototype to have faster run-time for both, encryption and decryption,
+alike.
 
 \section*{Notation}
 \begin{description}[itemsep=0em]
-    \item[$\entropy(\mathbf{x})$] Shannon's entropy of random variable
+    \item[$\entropy(\mathbf{x})$:]  Shannon's entropy of random variable
         $\mathbf{x}$.
-    \item[$|\mathbf{x}|$] Number of bits in tuple $\mathbf{x} = (x_0, x_1,
-        \ldots, x_{|\mathbf{x}|-1})$.
-    \item[$\mathbf{x} \oplus \mathbf{y}$] Bitwise exclusive-or operation
-        between two variables.  If one variable is shorter than the other,
-        then the shorter will repeat itself following modular arithmetics.
-        For example, if $|\mathbf{x}| = 5$ and $|\mathbf{y}|=2$, then the
-        lacking bits $y_2, y_3, y_4$ will be assumed to be $y_0, y_1, y_2$.
-    \item[$\random(n) = (r_0, r_1, \ldots, r_n)$] A sequence of $n$ many
-        random bits generated by a \gls{trng}.
-    \item[$\mathbf{k} = (k_0, k_1, \ldots, k_{|\mathbf{k}|-1})$] A
-        pre-shared secret key with enough $\entropy(\mathbf{k})$ for use
-        case.  Ideally $\mathbf{k} = \random(|\mathbf{k}|)$.  Size
-        $|\mathbf{k}|$ can be chosen arbitrarily to offer adequate security
-        for the use case, as there is no block structure in \baheem.
-    \item[$\mathbf{m} = (m_0, m_1, \ldots, m_{|\mathbf{m}|-1})$] An
-        arbitrarily long cleartext message.
-    \item[$\mathbf{p} = \random(|\mathbf{m}|), \mathbf{q} =
-        \random(|\mathbf{m}|)$] A pair of uniformly distributed random
-        one-time pads.  This is generated dynamically by the
-        implementation, transparently from the user, for every new
-        communication session.
-    \item[$\mathbf{\hat p}, \mathbf{\hat q}, \mathbf{\hat m}$] Encrypted
-        forms of $\mathbf{p}, \mathbf{q}, \mathbf{m}$, respectively.
+
+    \item[$\mathbf{x} + \mathbf{y} \bmod{2^{128}}$:]  Unsigned $128$-bit
+        addition.
+
+    \item[$\random(128)$:]  A sequence of $128$ many random bits generated
+        by a \gls{trng}.
+
+    \item[$\mathbf{k}$:]  A $128$-bit pre-shared secret key with enough
+        $\entropy(\mathbf{k})$ that looks random.  Ideally $\mathbf{k} =
+        \random(128)$.
+
+    \item[$\mathbf{m}$:]  An arbitrarily-long cleartext message of
+        $|\mathbf{m}|$ many bits.
+
+    \item[$\lceil\frac{|\mathbf{m}|}{128}\rceil$:]  Number of $128$-bit
+        blocks in cleartext $\mathbf{m}$.
+
+    \item[$\mathbf{m}_b$:]  The $b^{\text{th}}$ $128$-bit block from
+        $\mathbf{m}$.
+
+    \item[$\mathbf{p}_b = \random(128), \mathbf{q}_b = \random(128)$:]  A
+        pair of uniformly distributed random bits.  This is generated
+        dynamically by the implementation, transparently from the user, for
+        every block.
+
+    \item[$\mathbf{\hat p}_b, \mathbf{\hat q}_b, \mathbf{\hat m}_b$:]
+        Encrypted forms of $\mathbf{p}_b$, $\mathbf{q}_b$ and
+        $\mathbf{m}_b$, respectively.
 \end{description}
+
+%\vfill
+\break
 
 \tableofcontents
-\vfill
-\hrule
-\footnotesize
-\doclicenseThis
-\normalsize
 
-\section{Background}
-When Alice and Bob privately met last time, they used a \gls{trng} to generate
-enough random bits to use for encrypting their future communications over
-insecure channels.
+\blfootnote{\vspace{-1em}\doclicenseThis}
 
-Ideally, Alice and Bob wanted to use the \gls{trng} to generate terabytes
-worth of truly random bits, for the purpose of using the \gls{otp} as their
-encryption technique in the future.  They liked that the \gls{otp} is
-proven to be secure.  However, they realised that trying to discretely
-carry terabytes worth of data, and maintaining their health, entails a
-needless overhead and risk.
-
-As a result, Alice and Bob agreed to use the \gls{trng} to generate only
-$28$ bits of truly random data, $\mathbf{k} = [k_0, k_1, \ldots, k_{127}]$,
-as their pre-shared secret key.
-
-Alice's and Bob' reasoning is that, securely maintaining small amounts of
-data, such as $128$ bits, is much easier than that of larger data, such as
-terabytes, and yet $128$ bits of entropy is enough to render Eva's
-brute-forcing attempts impractical.
-
-However, they found that today's state-of-art symmetric ciphers, such as
-ChaCha20 \cite{chacha20} and AES \cite{aes}, are not provably secure, but
-rather simply that no one could fully break them \emph{yet}
-\cite{cryptoeprint:2007:472}. Further, one-way functions may not even
-exist, as the $\P$ versus $\NP$ is still one of the unsolved Millennium
-problems\footnote{\url{http://claymath.org/millennium-problems}}.
-
-\baheem\ solves the problems above by offering the proven security of the
-\gls{otp}, without the inconvenience of having to exchange large one-time
-pads in advance, for a negligible expense of accompanying each ciphertext
-with $2$ extra bits, only.
-
-\section{Proposed Algorithm:  \baheem}
-\Cref{alg_enc_batched,alg_dec_batched} show \baheem's encryption and
-decryption in batch mode.  The batched mode is generally not very practical
-for most applications, as data often comes in streams. However, the batch
-mode looks simpler, and this simplicity can aid explaining \baheem's
-concept more efficiently.
-
-\Cref{alg_enc_interleaved,alg_dec_interleaved} show the same, except that
-the inputs and the outputs are interleaved on bit-by-bit basis.  This
-interleaved version is identical to the batched one, except for re-ordering
-its output bits.
-
-An implementation may choose a different data format where interleaving
-happens on the basis of other data structures than bits.  The bit-by-bit
-interleaving algorithms are only shown to demonstrate that \baheem\ is
-practically useful when dealing with data streams.
+\section{Proposed Algorithm}
+\Cref{alg_enc,alg_dec} show \baheem's encryption and decryption by which
+the process is repeated over every $128$-bit blocks of $\mathbf{m}$.
 
 \begin{algorithm}
     \SetKwInOut{Input}{input}
     \SetKwInOut{Output}{output}
-    \Input{$\mathbf{k}, \mathbf{m}$}
+    \Input{$\mathbf{k}, \mathbf{m}_0, \mathbf{m}_1, \ldots$}
     \Output{$
-        \mathbf{\hat p}, \mathbf{\hat q}, \mathbf{\hat m}
+        (\mathbf{\hat p}_0, \mathbf{\hat q}_0, \mathbf{\hat m}_0),
+        (\mathbf{\hat p}_1, \mathbf{\hat q}_1, \mathbf{\hat m}_1),
+        \ldots
     $}
     \hrulefill\\
-    $\mathbf{p} \gets \random(|\mathbf{m}|)$\\
-    $\mathbf{q} \gets \random(|\mathbf{m}|)$\\
-    $\mathbf{\hat p} \gets \mathbf{p} \oplus \mathbf{k}$\\
-    $\mathbf{\hat q} \gets \mathbf{q} \oplus \mathbf{k}$\\
-    $\mathbf{\hat m} \
-        \gets \mathbf{m} \oplus \mathbf{p} \oplus \mathbf{q}$\\
-
-    \Return{$
-        \mathbf{\hat p}, \mathbf{\hat q}, \mathbf{\hat m}
-    $}
-
-    \caption{Batched \baheem\ encryption}
-    \label{alg_enc_batched}
+    \For{$b \in (0, 1, \ldots, \lceil\frac{|\mathbf{m}|}{128}\rceil-1)$}{
+        $\mathbf{p}_b \gets \random(128)$\\
+        $\mathbf{q}_b \gets \random(128)$\\
+        $\mathbf{\hat p}_b
+            \gets \mathbf{p}_b + \mathbf{k}
+            \bmod{2^{128}}$\\
+        $\mathbf{\hat q}_b
+            \gets \mathbf{q}_b + \mathbf{k}
+            \bmod{2^{128}}$\\
+        $\mathbf{\hat m}_b
+            \gets \mathbf{m}_b \oplus (\mathbf{p}_b + \mathbf{q}_b
+            \bmod{2^{128}})$\\
+    }
+    \caption{\baheem\ encryption}
+    \label{alg_enc}
 \end{algorithm}
 
 \begin{algorithm}
     \SetKwInOut{Input}{input}
     \SetKwInOut{Output}{output}
     \Input{$
-        \mathbf{k}, \mathbf{\hat p}, \mathbf{\hat q}, \mathbf{\hat m}
-    $}
-    \Output{$\mathbf{m}$}
-    \hrulefill\\
-    $\mathbf{p} \gets \mathbf{\hat p} \oplus \mathbf{k}$\\
-    $\mathbf{q} \gets \mathbf{\hat q} \oplus \mathbf{k}$\\
-    $\mathbf{m} \
-        \gets \mathbf{\hat m} \oplus \mathbf{p} \oplus \mathbf{q}$\\
-
-    \Return{$\mathbf{m}$}
-
-    \caption{Batched \baheem\ decryption}
-    \label{alg_dec_batched}
-\end{algorithm}
-
-\begin{algorithm}
-    \SetKwInOut{Input}{input}
-    \SetKwInOut{Output}{output}
-    \Input{$\mathbf{k}, m_0 \Vert m_1 \ldots$}
-    \Output{$
-        \hat p_0 \Vert \hat q_0 \Vert \hat m_0
-        \Vert \hat p_1 \Vert \hat q_1 \Vert \hat m_1
+        \mathbf{k}, 
+        (\mathbf{\hat p}_0, \mathbf{\hat q}_0, \mathbf{\hat m}_0),
+        (\mathbf{\hat p}_1, \mathbf{\hat q}_1, \mathbf{\hat m}_1),
         \ldots
     $}
+    \Output{$\mathbf{m}_0, \mathbf{m}_1, \ldots$}
     \hrulefill\\
-    \While{$m_i \gets \fread(1)$}{
-        $p_i \gets \random(1)$\\
-        $q_i \gets \random(1)$\\
-        $j \gets i \mod |\mathbf{k}|$\\
-        $\hat p_i \gets p_i \oplus k_j$\\
-        $\hat q_i \gets q_i \oplus k_j$\\
-        $\hat m_i \gets m_i \oplus p_i \oplus q_i$\\
-        $\fwrite(\hat p_i \Vert \hat q_i \Vert \hat m_i)$\\
+    \For{$b \in (0, 1, \ldots, \lceil\frac{|\mathbf{m}|}{128}\rceil-1)$}{
+        $\mathbf{p}_b
+            \gets \mathbf{\hat p}_b - \mathbf{k}
+            \bmod{2^{128}}$\\
+        $\mathbf{q}_b
+            \gets \mathbf{\hat q}_b - \mathbf{k}
+            \bmod{2^{128}}$\\
+        $\mathbf{m}_b
+            \gets \mathbf{\hat m}_b \oplus (\mathbf{p}_b + \mathbf{q}_b
+            \bmod{2^{128}})$\\
     }
-
-    \caption{Interleaved \baheem\ encryption}
-    \label{alg_enc_interleaved}
+    \caption{\baheem\ decryption}
+    \label{alg_dec}
 \end{algorithm}
 
-\begin{algorithm}
-    \SetKwInOut{Input}{input}
-    \SetKwInOut{Output}{output}
-    \Input{$
-        \mathbf{k},
-        \hat p_0 \Vert \hat q_0 \Vert \hat m_0
-        \Vert \hat p_1 \Vert \hat q_1 \Vert \hat m_1
-        \ldots
-    $}
-    \Output{$m_0, m_1, \ldots$}
-    \hrulefill\\
-    \While{$\hat p_i, \hat q_i, m_i \gets \fread(3)$}{
-        $j \gets i \mod |\mathbf{k}|$\\
-        $p_i \gets \hat p_i \oplus k_j$\\
-        $q_i \gets \hat q_i \oplus k_j$\\
-        $m_i \gets \hat m_i \oplus p_i \oplus q_i$\\
-        $\fwrite(m_i)$\\
-    }
+\section{Security Analysis}
+The \baheem\ encryption is essentially the \gls{xor} cryptosystem:
+\[
+    \mathbf{\hat m}_b \gets \mathbf{m}_b \oplus
+    \underbrace{
+        (\mathbf{p}_b + \mathbf{q}_b \bmod{2^{128}})
+    }_{\text{Encryption pad}}
+\]
 
-    \caption{Interleaved \baheem\ decryption}
-    \label{alg_dec_interleaved}
-\end{algorithm}
+It follows from Shannon's perfect secrecy proof of the \gls{otp}
+\cite{perfect_secrecy} that \baheem\ is secure if and only if its
+encryption pad maintains its key's entropy as shown in
+\cref{eq_security_hinge}, even if the adversary knows $\mathbf{\hat p}_b$,
+$\mathbf{\hat q}_b$, $\mathbf{\hat m}_b$ and the cleartext message
+$\mathbf{m}_b$.
 
-\section{Security Proof}
-\baheem\ can be thought as multiple \glspl{otp}, one of which recurses into
-itself for once. Therefore, the proving strategy that is adopted in this
-paper is to show that \baheem\ is made of recursion of \glspl{otp}, and
-that this recursion is also an \gls{otp}.
+\begin{equation}
+    \begin{split}
+        &\entropy(
+            \mathbf{k}
+            | \mathbf{\hat p}_b,
+              \mathbf{\hat q}_b,
+              \mathbf{\hat m}_b,
+              \mathbf{m}_b
+        ) \\
+        &=\entropy(
+            \mathbf{k}
+            | \mathbf{\hat p}_b,
+              \mathbf{\hat q}_b,
+              \mathbf{p}_b + \mathbf{q}_b \bmod{2^{128}}
+        ) \\
+        &= \entropy(\mathbf{k})
+    \end{split}
+    \label{eq_security_hinge}
+\end{equation}
 
-\begin{theorem}[Shannon's perfect secrecy for \gls{otp}]
-    For any pair of bit tuples $\mathbf{x}$ and $\mathbf{y}$, the cryptosystem
-    $\mathbf{x} \oplus \mathbf{y} = \mathbf{z}$ is said to have \emph{perfect
-    secrecy} when, for any $i^{\text{th}}$ bit, $\Pr(x_i=0 | z_i) =\Pr(x_i=0)$,
-    which is true if and only if $\Pr(y_i=0) = 0.5$.
-    \label{thrm_otp_perfect_secrecy}
+To simplify the analysis, suppose that the size of a block in \baheem\ is
+$3$ bits only, and that that the cleartext block $\mathbf{m}_b$ is known to
+the adversary, which implies that the adversary can trivially know that:
+\[
+    \mathbf{p}_b + \mathbf{q}_b \bmod{2^3}
+    = \mathbf{\hat m}_b \oplus \mathbf{m}_b
+\]
+in addition to adversary's knowledge of the public variables $\mathbf{\hat
+p}_b$ and $\mathbf{\hat q}_b$. More specifically, suppose that the
+adversary found that:
+\begin{align*}
+    0&=\mathbf{\hat p}_b = \mathbf{p}_b + \mathbf{k} \bmod{2^3}  \\
+    3&=\mathbf{\hat q}_b = \mathbf{q}_b + \mathbf{k} \bmod{2^3}  \\
+    5&=\qquad\             \mathbf{p}_b + \mathbf{q}_b \bmod{2^3}\\
+\end{align*}
+
+Then, the question is:  will this information reduce the space from which
+the key $\mathbf{k}$ is chosen from?  In other words, what are the possible
+values of $\mathbf{k}$ that can lead to the outputs $0$, $3$ and $5$ above?
+\Cref{tbl_3bit_add} visualises this.
+
+\begin{table}[tbh]
+\centering
+\begin{NiceTabular}{p{.1em}c|cccccccc}[colortbl-like]
+    \        &&&&& $\mathcal{Y}$ &&&& \\
+             &   &     0 &     1 &     2 &     3 &     4 &     5 &     6 &     7 \\\hline
+             & 0 & \pq 0 &     1 &     2 & \qh 3 &     4 & \ph 5 &     6 &     7 \\
+             & 1 &     1 &     2 & \qh 3 &     4 & \ph 5 &     6 &     7 & \pq 0 \\
+             & 2 &     2 & \qh 3 &     4 & \ph 5 &     6 &     7 & \pq 0 &     1 \\
+$\mathcal{X}$& 3 & \qh 3 &     4 & \ph 5 &     6 &     7 & \pq 0 &     1 &     2 \\
+             & 4 &     4 & \ph 5 &     6 &     7 & \pq 0 &     1 &     2 & \qh 3 \\
+             & 5 & \ph 5 &     6 &     7 & \pq 0 &     1 &     2 & \qh 3 &     4 \\
+             & 6 &     6 &     7 & \pq 0 &     1 &     2 & \qh 3 &     4 & \ph 5 \\
+             & 7 &     7 & \pq 0 &     1 &     2 & \qh 3 &     4 & \ph 5 &     6 \\
+\end{NiceTabular}
+\caption{Exhaustive unsigned $3$-bit addition.  For a given output
+$\mathbf{x} + \mathbf{y} \bmod{2^3}$, there are $2^3$ many possible input
+values of $(\mathbf{x}, \mathbf{y}) \in \mathcal{X}\times\mathcal{Y}$ that
+map to $\mathbf{x} + \mathbf{y} \bmod{2^3}$.}
+\label{tbl_3bit_add}
+\end{table}
+
+As shown in \cref{tbl_3bit_add}, the total number of horizontal and
+vertical intersections that simultaneously cross all of the outputs $0$,
+$3$ and $5$, remain $2^3$.  Meaning, the total number of values of
+$\mathbf{k}$ that could lead to the outputs remains $2^3$.
+
+This $3$-bit example can be trivially extended by induction to show that
+the same conclusions hold even with a $128$-bit unsigned addition and any
+other output numbers than $0$, $3$ and $5$.
+
+Therefore, we can conclude that adversary's knowledge of the public
+variables $\mathbf{\hat p}_b$, $\mathbf{\hat q}_b$, $\mathbf{\hat m}_b$ and
+the cleartext $\mathbf{m}_b$, which leads to deducing $\mathbf{p}_b +
+\mathbf{q}_b \bmod{2^{128}}$, can not reduce $\entropy(\mathbf{k})$.
+
+Since $\mathbf{\hat p}_b$, $\mathbf{\hat q}_b$, $\mathbf{\hat m}_b$ and the
+cleartext $\mathbf{m}_b$ are exhaustively all of the outputs of \baheem\
+that can be accessible to an adversary, and since they do not reduce
+\baheem's key space, therefore no cryptanalysis can reduce \baheem's
+security below $\entropy(\mathbf{k})$.
+
+\begin{theorem}[Secure encryption pad]
+    If the key $\mathbf{k}$ looks like a uniformly distributed $128$-bit
+    random number, and $\mathbf{p}_b$ and $\mathbf{q}_b$ are $128$-bit
+    random numbers generated by a \gls{trng}, then \baheem\ guarantees that
+    its encryption pad satisfies:
+    \[
+        \entropy(
+            \mathbf{k}
+            | \mathbf{\hat p}_b,
+              \mathbf{\hat q}_b,
+              \mathbf{\hat m}_b,
+              \mathbf{m}_b
+        )
+        = \entropy(\mathbf{k})
+    \]
+    \label{thrm_baheem_perfect_encryption_pad}
 \end{theorem}
 
-\begin{proof}
-\Cref{alg_enc_batched} shows that \baheem's encryption outputs
-    $\mathbf{\hat p}$, $\mathbf{\hat q}$ and $\mathbf{\hat m}$, each of
-    which can be viewed as the ciphertext output of an \gls{otp}
-    cryptosystem as shown below:
-\begin{description}[itemsep=0em]
-    \item[$\mathbf{k} \oplus \mathbf{p} = \mathbf{\hat p}$.] Since
-        $\mathbf{p} \gets \random(|\mathbf{m}|)$ by definition, it is
-        implied that, for any $i \in \{0, 1, \ldots, |\mathbf{m}|\}$,
-        $\Pr(p_i=0) = 0.5$. Therefore, it follows by
-        \cref{thrm_otp_perfect_secrecy} that this cryptosystem has perfect
-        secrecy; that is, reveals no information about the pre-shared
-        secret key $\mathbf{k}$.
+Since \baheem\ is an \gls{xor} cryptosystem, and since its encryption pad
+is secure (\cref{thrm_baheem_perfect_encryption_pad}), therefore it has to
+follow by Shannon's perfect secrecy \cite{perfect_secrecy} that \baheem's
+encryption is secure as well.
 
-    \item[$\mathbf{k} \oplus \mathbf{q} = \mathbf{\hat q}$.] Since
-        $\mathbf{q} \gets \random(|\mathbf{m}|)$ by definition, this is
-        identical to the previous cryptosystem, and therefore has perfect
-        secrecy as well.
-
-    \item[$\mathbf{p} \oplus \mathbf{q} \oplus \mathbf{m} = \mathbf{\hat
-        m}$.] This can be viewed as two \gls{otp} cryptosystems one
-        recursing into the other:
-        \begin{description}[itemsep=0em]
-            \item[$\mathbf{p} \oplus \mathbf{q} = \mathbf{z}$.]  For any $i
-                \in \{0, 1, \ldots, |\mathbf{m}|\}$, $\Pr(q_i=0) = 0.5$ is
-                implied by definition as stated earlier, therefore this is
-                cryptosystem has perfect secrecy; that is, it reveals no
-                information about $\mathbf{p}$ should an adversary get
-                $\mathbf{z}$.
-
-                Likewise, since $\Pr(p_i=0) = 0.5$ is also true as stated
-                earlier as well, it also follows that no information is
-                revealed about $\mathbf{q}$ either should an adversary get
-                $\mathbf{z}$.
-
-                Since no information can be revealed about $\mathbf{p}$ and
-                $\mathbf{q}$, in the case the adversary obtains bits of
-                $\mathbf{z}$, it has to follow that no information can be
-                revealed about the pre-shared secret key $\mathbf{k}$.
-
-            \item[$\mathbf{m} \oplus \mathbf{z} = \mathbf{\hat m}$.]  Since
-                $\mathbf{z}$ is the ciphertext of a cryptosystem with
-                perfect secrecy, and since \baheem\ does not share it, it
-                has to follow that, for any $i \in \{0, 1, \ldots,
-                |\mathbf{m}|\}$, $\Pr(z_i=0) = 0.5$.  Therefore, it follows
-                by \cref{thrm_otp_perfect_secrecy} that this cryptosystem
-                has perfect secrecy; that is, reveals no information about
-                the cleartext message $\mathbf{m}$.
-        \end{description}
-\end{description}
-
-Since \cref{alg_enc_interleaved} is identical to \cref{alg_enc_batched},
-except for only adopting a different data storage format, it has to follow
-that, both, \cref{alg_enc_batched,alg_enc_interleaved} offer perfect
-secrecy in that no information about $\mathbf{k}$ or
-$\mathbf{m}$ can be revealed from $\mathbf{\hat p},
-\mathbf{\hat q}, \mathbf{\hat m}$.
-
-\begin{theorem}[\baheem's perfect secrecy]
-    An adversary that obtains $\mathbf{\hat p}$, $\mathbf{\hat q}$ and
-    $\mathbf{\hat m}$, cannot gain information about the pre-shared secret
-    key $\mathbf{k}$ or the cleartext message $\mathbf{m}$.
-    \label{thrm_baheem_perfect_secrecy}
+\begin{theorem}[Secure encryption]
+    \[
+        \entropy(
+            \mathbf{m}_b
+            | \mathbf{\hat p}_b,
+              \mathbf{\hat q}_b,
+              \mathbf{\hat m}_b
+        )
+        = \min(\entropy(\mathbf{m}_b), \entropy(\mathbf{k}))
+    \]
+    \label{thrm_baheem_secure}
 \end{theorem}
 
-Since no information can be revealed about $\mathbf{k}$ or $\mathbf{m}$
-from \baheem's encrypted output, it has to follow that, asymptotically, no
-cryptanalysis can reduce \baheem's key brute-forcing space below
-$2^{\entropy(\mathbf{k})}$.
+\begin{note}
+    This paper does not claim that \baheem\ has perfect secrecy, but rather
+    claims that it has a $\entropy(\mathbf{k})$-bit security. Shannon's
+    perfect secrecy proof is cited only for its relevance in proving
+    \baheem's $\entropy(\mathbf{k})$-bit security as the \gls{otp} is
+    nonetheless a similar \gls{xor} cryptosystem.
+\end{note}
 
-\begin{theorem}[\baheem's security]
-    No cryptanalysis can reduce \baheem's security below
-    $\entropy(\mathbf{k})$ bits.
-    \label{thrm_baheem_security}
-\end{theorem}
-\end{proof}
 
-\section{Implementation Example}
-
+\section{Implementation Examples}
 \subsection{C Functions}
 In this example, the caller is expected to initialise a $128$ bits key
 $\mathbf{k}$, a pair of random pads, $\mathbf{p}$ and $\mathbf{q}$, each of
@@ -364,7 +326,6 @@ which is $\mathtt{len} \times 64$ bits long, in order to encrypt a
 $\mathtt{len} \times 64$ bits long cleartext message $\mathbf{m}$.  The
 encryption happens in-place, so the caller does not have to allocate
 separate memory for the ciphertext.
-
 \begin{verbatim}
 void baheem_enc(
     uint64_t *k, /* 128bit pre-shared key */
@@ -375,35 +336,33 @@ void baheem_enc(
 ) {
     size_t i;
     for (i = 0; i < len; i++) {
-        m[i] ^= p[i] ^ q[i];
-        p[i] ^= k[0];
-        q[i] ^= k[1];
+        m[i] ^= p[i] + q[i];
+        p[i] += k[0];
+        q[i] += k[1];
     }
 }
 \end{verbatim}
-
 Likewise, the following is an example implementing the corresponding
 in-place decryption function.
-
 \begin{verbatim}
 void baheem_dec(... same input ...) {
     size_t i;
     for (i = 0; i < len; i++) {
-        p[i] ^= k[0];
-        q[i] ^= k[1];
-        m[i] ^= p[i] ^ q[i];
+        p[i] -= k[0];
+        q[i] -= k[1];
+        m[i] ^= p[i] + q[i];
     }
 }
 \end{verbatim}
 
-\subsection{An Early Prototype:  Alyal}
-Alyal is an early single-threaded prototype implementation that uses
-\baheem\ to encrypt and decrypt files, mainly to demonstrate \baheem's
+
+\subsection{Alyal}
+Alyal is an early single-threaded implementation to demonstrate \baheem's
 practical utility with real-world scenarios.  Internally, Alyal uses the
 \texttt{baheem\_enc} and \texttt{baheem\_dec} functions that were presented
 earlier in this section.
 
-\subsubsection{Installation and Usage}
+\subsubsection{Installation}
 \begin{verbatim}
 > git clone \
     https://codeberg.org/rajululkahf/alyal
@@ -417,9 +376,9 @@ earlier in this section.
 \end{verbatim}
 
 \subsubsection{Benchmark}
-\Cref{tbl_benchmark} shows an early benchmark that was performed on a
-machine with a 3.4GHz Intel Core i5-3570K CPU, 32GB RAM, 7200 RPM hard
-disks, Linux 5.17.1-gentoo-x86-64, and OpenSSL 1.1.1n.
+This benchmark that was performed on a machine with a 3.4GHz Intel Core
+i5-3570K CPU, 32GB RAM, 7200 RPM hard disks, Linux 5.17.4-gentoo-x86-64,
+and OpenSSL 1.1.1n.
 
 \begin{table}[tbh]
     \centering
@@ -427,12 +386,12 @@ disks, Linux 5.17.1-gentoo-x86-64, and OpenSSL 1.1.1n.
                 & OpenSSL            & \multicolumn{2}{c}{Alyal}                 \\
                 & ChaCha20           & \multicolumn{2}{c}{\baheem}               \\
                 &                    & \texttt{/dev/random} & \texttt{file.rand} \\\hline
-        Encrypt & \textbf{1.07} secs & 4.25 secs            & 1.77 secs          \\
-        500MB   & \textbf{1.03} secs & 4.28 secs            & 1.76 secs          \\
-                & \textbf{1.05} secs & 4.30 secs            & 1.76 secs          \\\hline
-        Decrypt & 1.07 secs          & \multicolumn{2}{c}{\textbf{0.85} secs}    \\
-        500MB   & 1.09 secs          & \multicolumn{2}{c}{\textbf{0.91} secs}    \\
-                & 1.15 secs          & \multicolumn{2}{c}{\textbf{0.84} secs}    \\
+        Encrypt & \textbf{0.87} secs & 3.91 secs            & 1.40 secs          \\
+        500MB   & \textbf{1.04} secs & 4.25 secs            & 1.82 secs          \\
+                & \textbf{1.04} secs & 4.27 secs            & 1.73 secs          \\\hline
+        Decrypt & 0.90 secs          & \multicolumn{2}{c}{\textbf{0.64} secs}    \\
+        500MB   & 1.06 secs          & \multicolumn{2}{c}{\textbf{0.89} secs}    \\
+                & 1.06 secs          & \multicolumn{2}{c}{\textbf{0.81} secs}    \\
     \end{tabular}
     \caption{Wall-clock run-time comparison between OpenSSL's ChaCha20, and
     Alyal's \baheem\ implementation with two sources as the \gls{trng}:
@@ -445,36 +404,43 @@ disks, Linux 5.17.1-gentoo-x86-64, and OpenSSL 1.1.1n.
 has a faster decryption run-time than OpenSSL's ChaCha20, it has slower
 encryption run-time. However:
 \begin{enumerate}
-    \item \baheem's provable security may justify waiting the $3$ extra
-        seconds for the 500MB data, specially that many user applications
-        involve encrypting much smaller data sizes with unnoticeable time
-        difference
+    \item The differences in run-time are insignificant for most
+        applications, which proves \baheem's practical utility in the real
+        world.
+    \item \baheem's provable security should arguably justify waiting the
+        $3$ extra seconds for the 500MB data, specially that many user
+        applications involve encrypting much smaller data sizes with
+        unnoticeable time difference
     \item Preparing the random bits in advance significantly reduces the
         delay as shown with the \texttt{file.rand} case, and can be
         optimised further should it be prepared in memory.
-    \item Alyal is single-threaded despite \baheem's high parallelism.
-        This can make future updates even faster.
+    \item Alyal is currently single-threaded despite \baheem's capacity for
+        high parallelism as all blocks are independent. This gives room for
+        future versions to be significantly faster.
 \end{enumerate}
 
-\section{Conclusion}
+\section{Conclusions}
 This paper proposed \baheem\ with the following properties:
 \begin{description}[itemsep=0em]
-    \item[Secure.] \baheem\ is proven that no cryptanalysis can degrade its
-        security below $\entropy(\mathbf{k})$ bits.
-    \item[Fast.] Requires only $4$ \glspl{xor} per encryption or decryption
-        alike.  Highly parallelisable as the encryption, or decryption, of
-        any bit is independent of other bits.
+    \item[Secure.] No cryptanalysis can degrade its
+        security below $\min(\entropy(\mathbf{m}), \entropy(\mathbf{k}))$
+        bits.
 
-        A single-threaded early prototype (Alyal) outperformed OpenSSL's
+    \item[Fast.] Requires only three additions and a single \gls{xor} per
+        encryption or decryption alike.
+
+        Highly parallelisable as the encryption, or decryption, of any bit
+        is independent of other bits.
+
+        \baheem's single-threaded prototype (Alyal) outperformed OpenSSL's
         ChaCha20 when decrypting files, despite \baheem's $2$ bits
-        overhead, which proves that such overhead is negligible in
+        overhead, which demonstrates that such overhead is negligible in
         practice.
 
-        While Alyal underperformed during the encryption for its use of a
-        \gls{trng}, optimising it is trivial by preparing the \gls{trng} in
-        advance.  This is confirmed by the currently fast decryption speed,
-        which only differs from the encryption by the fact that it does not
-        pull bits from the \gls{trng}.
+        While the prototype has a slower encryption run-time due to its use
+        of a \gls{trng}, optimising it is trivial by preparing the
+        \gls{trng} in advance.
+
     \item[Simple.] \baheem's simplicity implies fewer expected number of
         implementation bugs, and therefore higher practical security.
 \end{description}
