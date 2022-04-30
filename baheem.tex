@@ -67,15 +67,18 @@ $\min(\entropy(\mathbf{m}), \entropy(\mathbf{k}))$ bits of entropy, even
 under Grover's algorithm \cite{10.1145/237814.237866} or even if it turned
 out that $\P = \NP$.
 
-\baheem\ is also is highly parallelise-able, and requires only three
-additions and a single \gls{xor}.
+Aside from the cost of memory access and input/output processing, \baheem\
+is also is highly parallelise-able, and requires only three additions and
+one \gls{xor} in order to encrypt or decrypt.
 
 Its early prototype, Alyal, achieved similar run-time speeds to OpenSSL's
 ChaCha20 \cite{chacha20}; slightly faster decryption, while slightly slower
 encryption when the \gls{trng} was prepared in a file in advance.  Future
 versions, with better \gls{trng} optimisations, should be able to enable
 the prototype to have faster run-time for both, encryption and decryption,
-alike.
+alike.  Either way, Alyal is highly practical, specially when considering
+its strong security guarantee.  Further speed gain is possible when Alyal
+utilises \baheem's high parallelism.
 
 \section*{Notation}
 \begin{description}[itemsep=0em]
@@ -102,9 +105,7 @@ alike.
         $\mathbf{m}$.
 
     \item[$\mathbf{p}_b = \random(128), \mathbf{q}_b = \random(128)$:]  A
-        pair of uniformly distributed random bits.  This is generated
-        dynamically by the implementation, transparently from the user, for
-        every block.
+        pair of uniformly distributed random bits.
 
     \item[$\mathbf{\hat p}_b, \mathbf{\hat q}_b, \mathbf{\hat m}_b$:]
         Encrypted forms of $\mathbf{p}_b$, $\mathbf{q}_b$ and
@@ -184,7 +185,7 @@ The \baheem\ encryption is essentially the \gls{xor} cryptosystem:
     }_{\text{Encryption pad}}
 \]
 
-It follows from Shannon's perfect secrecy proof of the \gls{otp}
+It trivially follows from Shannon's perfect secrecy proof of the \gls{otp}
 \cite{perfect_secrecy} that \baheem\ is secure if and only if its
 encryption pad maintains its key's entropy as shown in
 \cref{eq_security_hinge}, even if the adversary knows $\mathbf{\hat p}_b$,
@@ -253,8 +254,8 @@ map to $\mathbf{x} + \mathbf{y} \bmod{2^3}$.}
 \label{tbl_3bit_add}
 \end{table}
 
-As shown in \cref{tbl_3bit_add}, the total number of horizontal and
-vertical intersections that simultaneously cross all of the outputs $0$,
+As shown in \cref{tbl_3bit_add}, the total number of horizontal, or
+vertical, intersections that simultaneously cross all of the outputs $0$,
 $3$ and $5$, remain $2^3$.  Meaning, the total number of values of
 $\mathbf{k}$ that could lead to the outputs remains $2^3$.
 
@@ -310,11 +311,12 @@ encryption is secure as well.
 \end{theorem}
 
 \begin{note}
-    This paper does not claim that \baheem\ has perfect secrecy, but rather
-    claims that it has a $\entropy(\mathbf{k})$-bit security. Shannon's
-    perfect secrecy proof is cited only for its relevance in proving
-    \baheem's $\entropy(\mathbf{k})$-bit security as the \gls{otp} is
-    nonetheless a similar \gls{xor} cryptosystem.
+    \baheem\ does not have perfect secrecy, as this requires an impractical
+    key that is as long as the message itself.  \baheem\ rather has a
+    $\entropy(\mathbf{k})$-bit security.  Shannon's proof of perfect
+    secrecy of the \gls{otp} is cited only for its relevance in proving
+    \baheem's $\entropy(\mathbf{k})$-bit security as theare are \gls{xor}
+    cryptosystems.
 \end{note}
 
 
@@ -356,8 +358,8 @@ void baheem_dec(... same input ...) {
 \end{verbatim}
 
 
-\subsection{Alyal}
-Alyal is an early single-threaded implementation to demonstrate \baheem's
+\subsection{A File Encryption Tool}
+Alyal is an single-threaded implementation to demonstrate \baheem's
 practical utility with real-world scenarios.  Internally, Alyal uses the
 \texttt{baheem\_enc} and \texttt{baheem\_dec} functions that were presented
 earlier in this section.
@@ -367,7 +369,7 @@ earlier in this section.
 > git clone \
     https://codeberg.org/rajululkahf/alyal
 > cd alyal
-> make
+> make test
 > dd bs=1MB count=500 \
     if=/dev/zero of=test.txt
 > ./alyal enc test.txt test.enc
@@ -412,8 +414,9 @@ encryption run-time. However:
         applications involve encrypting much smaller data sizes with
         unnoticeable time difference
     \item Preparing the random bits in advance significantly reduces the
-        delay as shown with the \texttt{file.rand} case, and can be
-        optimised further should it be prepared in memory.
+        encryption time as shown with the \texttt{file.rand} case in
+        \cref{tbl_benchmark}, and can be optimised further should it be
+        prepared in memory.
     \item Alyal is currently single-threaded despite \baheem's capacity for
         high parallelism as all blocks are independent. This gives room for
         future versions to be significantly faster.
