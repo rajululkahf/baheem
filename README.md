@@ -9,7 +9,7 @@ message m to encrypt, no cryptanalysis can degrade its security below
 min[H(m), H(k)] bits of entropy, even under Grover's algorithm or even if
 it turned out that P = NP.
 
-Aside from the cost of memory access and input/output processing, Băhēm\ is
+Aside from the cost of memory access and input/output processing, Băhēm is
 also is highly parallelise-able, and requires only three additions and one
 bit-wise XOR operation in order to encrypt or decrypt.
 
