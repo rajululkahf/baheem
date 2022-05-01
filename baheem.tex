@@ -215,8 +215,8 @@ $\mathbf{m}_b$.
 \end{equation}
 
 To simplify the analysis, suppose that the size of a block in \baheem\ is
-$3$ bits only, and that that the cleartext block $\mathbf{m}_b$ is known to
-the adversary, which implies that the adversary can trivially know that:
+$3$ bits only, and that the cleartext block $\mathbf{m}_b$ is known to the
+adversary, which implies that the adversary can trivially know that:
 \[
     \mathbf{p}_b + \mathbf{q}_b \bmod{2^3}
     = \mathbf{\hat m}_b \oplus \mathbf{m}_b
@@ -355,7 +355,7 @@ $\mathtt{len} \times 128$ bits long cleartext message $\mathbf{m}$. The
 encryption happens in-place, so the caller does not have to allocate
 separate memory for the output. Since $128$-bit wide CPU instructions are
 not common, this code operates in $64$-bit basis, each time with a
-different $64$ bit part of the key.
+different $64$-bit part of the key.
 
 \begin{verbatim}
 void baheem_enc(
@@ -401,15 +401,29 @@ earlier in this section.
 
 \subsubsection{Installation}
 \begin{verbatim}
-> git clone \
-    https://codeberg.org/rajululkahf/alyal
-> cd alyal
-> make test
-> dd bs=1MB count=500 \
-    if=/dev/zero of=test.txt
-> ./alyal enc test.txt test.enc
-> ./alyal dec test.enc test.enc.txt
-> shasum *
+git clone \
+  https://codeberg.org/rajululkahf/alyal
+cd alyal
+make
+make test
+\end{verbatim}
+
+\subsubsection{Usage}
+
+\begin{verbatim}
+alyal (enc|dec) IN OUT [TRNG]
+alyal help
+\end{verbatim}
+
+To encrypt a cleartext file \texttt{a} and save it as file \texttt{b}:
+\begin{verbatim}
+alyal enc a b
+\end{verbatim}
+
+To decrypt the latter back to its cleartext form and save it as file
+\texttt{c}:
+\begin{verbatim}
+alyal dec b c
 \end{verbatim}
 
 \subsubsection{Benchmark}
