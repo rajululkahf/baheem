@@ -19,6 +19,7 @@
 \usepackage{cancel}
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{nicematrix}
+\usepackage{listings}
 \newcommand{\baheem}{Băhēm}
 \newcommand{\alyal}{Alyal}
 \newcommand\blfootnote[1]{%
@@ -39,7 +40,6 @@
 \newacronym{xor}{XOR}{bitwise exclusive-or operation}
 \newtheorem{lemma}{Lemma}
 \newtheorem{theorem}{Theorem}
-\newtheorem{note}{Note}
 \renewcommand\qedsymbol{$\blacksquare$}
 \newcommand{\pq}[1]{\cellcolor{red!20}#1}
 \newcommand{\ph}[1]{\cellcolor{blue!20}#1}
@@ -368,31 +368,46 @@ $\entropy(\mathbf{m}_b)$-bits secure, whichever is smaller.
     \label{thrm_baheem_secure}
 \end{theorem}
 
-\begin{note}
-    \baheem\ does not seek achieving perfect secrecy, as this requires an
-    impractical key that is as long as the length of cleartext message
-    $|\mathbf{m}|$, with a $\min[\entropy(\mathbf{m}_b), |\mathbf{m}|]$-bit
-    security.
+\hrule
+\begin{description}
+    \item[Note:] \baheem\ does not aim at achieving perfect secrecy, as
+        perfect secrecy requires a usually-impractical key that is as long
+        as the length $|\mathbf{m}|$ of the cleartext message $\mathbf{m}$
+        itself, with an unnecessarily too large upper security bound that
+        is worth $|\mathbf{m}|$ many bits of entropy.
 
-    \baheem\ rather has a $\min[\entropy(\mathbf{m}_b),
-    \entropy(\mathbf{k})]$-bit security. Shannon's proof of perfect secrecy
-    of the \gls{otp} is cited only for its relevance in proving \baheem's
-    $\min[\entropy(\mathbf{m}_b), \entropy(\mathbf{k})]$-bit security as
-    both of them are nonetheless relevant \gls{xor} cryptosystems.
-\end{note}
+        \baheem\ rather aims at achieving a security that is worth
+        $\min[\entropy(\mathbf{m}_b), \entropy(\mathbf{k})] \le 128$
+        entropy bits.  Unlike the \gls{otp}, this is \emph{practically}
+        secure and only requires a small $128$-bit pre-shared key.
+
+        Shannon's proof of perfect secrecy of the \gls{otp} is cited only
+        for its relevance as an \gls{xor} cryptosystem.
+\end{description}
+\hrule
 
 
 \section{Implementation Examples}
 \subsection{C Functions}
-In this example, the caller is expected to initialise a $128$ bits key
-$\mathbf{k}$, a pair of random pads, $\mathbf{p}$ and $\mathbf{q}$, each of
-which is $\mathtt{len}$ long, in order to encrypt a $\mathtt{len}$ long
-cleartext message $\mathbf{m}$. The encryption happens in-place, so the
-caller does not have to allocate separate memory for the output. Since
-$128$-bit wide CPU instructions are not common, this code operates in
-$64$-bit basis, each time with a different $64$-bit part of the key.
+In \cref{lst_baheem_c_enc}, the caller is expected to initialise a $128$
+bits key $\mathbf{k}$, a pair of random pads, $\mathbf{p}$ and
+$\mathbf{q}$, each of which is $\mathtt{len}$ long, in order to encrypt a
+$\mathtt{len}$ long cleartext message $\mathbf{m}$. The encryption happens
+in-place, so the caller does not have to allocate separate memory for the
+output. Since $128$-bit wide CPU instructions are not common, this code
+operates in $64$-bit basis, each time with a different $64$-bit part of the
+key.
 
-\begin{verbatim}
+\lstset{
+  basicstyle=\ttfamily,
+  columns=fullflexible,
+    commentstyle=\color{gray}\ttfamily,
+  keepspaces=true,
+}
+\begin{table}[tbh]
+\hrule
+\begin{lstlisting}[language=C, caption=Encryption function example,
+                   label=lst_baheem_c_enc]
 void baheem_enc(
     uint64_t *k, /* 128bit pre-shared key */
     uint64_t *p, /* random pad 1          */
@@ -410,10 +425,17 @@ void baheem_enc(
         q[i+1] += k[1];
     }
 }
-\end{verbatim}
-Likewise, the following is an example implementing the corresponding
-in-place decryption function.
-\begin{verbatim}
+\end{lstlisting}
+\hrule
+\end{table}
+
+Likewise, \cref{lst_baheem_c_dec} shows an example implementing the
+corresponding in-place decryption function.
+
+\begin{table}[tbh]
+\hrule
+\begin{lstlisting}[language=C, caption=Decryption funciton example,
+                   label=lst_baheem_c_dec]
 void baheem_dec(... same input ...) {
     size_t i;
     for (i = 0; i < len; i += 2) {
@@ -425,7 +447,9 @@ void baheem_dec(... same input ...) {
         m[i+1] ^= p[i+1] + q[i+1];
     }
 }
-\end{verbatim}
+\end{lstlisting}
+\hrule
+\end{table}
 
 
 \subsection{A File Encryption Tool}
@@ -509,11 +533,11 @@ slower encryption run-time. However:
 \section{Conclusions}
 This paper proposed \baheem\ with the following properties:
 \begin{description}[itemsep=0em]
-    \item[Secure.] No cryptanalysis can degrade its
+    \item[Secure:] No cryptanalysis can degrade its
         security below $\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$
         bits.
 
-    \item[Fast.] Requires only three additions and a single \gls{xor} per
+    \item[Fast:] Requires only three additions and a single \gls{xor} per
         encryption or decryption alike.
 
         Highly parallelisable as the encryption, or decryption, of any bit
@@ -528,13 +552,32 @@ This paper proposed \baheem\ with the following properties:
         of a \gls{trng}, optimising it is trivial by preparing the
         \gls{trng} in advance.
 
-    \item[Simple.] \baheem's simplicity implies fewer expected number of
+    \item[Simple:] \baheem's simplicity implies fewer expected number of
         implementation bugs, and therefore higher practical security.
 
         Another interesting advantage of this simplicity is that it allows
-        \baheem\ to be used with pen-and-paper should one lack a computer,
-        such as the case with post-apocalyptic scenarios.
+        \baheem\ to be used with a mere pen and a paper should one lack a
+        computer, such as the case with post-apocalyptic scenarios.
+
+        For example, in a post-apocalyptic scenario, one can generate the
+        random numbers $\mathbf{p}_b$ and $\mathbf{q}_b$ by rolling dies
+        enough number of times until adequate entropy is obtained, and then
+        using a pen and a paper to calculate the ciphertext as per
+        \cref{alg_enc}.
+
+        Since \baheem\ does not require repeating rounds over and over,
+        \baheem\ is significantly simpler to perform using a pen and a
+        paper than, say, ChaCha20, AES \cite{aes}, etc, which require many
+        repeated rounds that make it too tedious for a human to perform by
+        the pen and paper method.
 \end{description}
+
+\section*{Declarations}
+All data generated or analysed during this study are included in this
+published article.  Implementation code is available in the following
+repository:
+
+\url{https://codeberg.org/rajululkahf/alyal}
 
 \bibliographystyle{unsrt}
 \bibliography{references}
