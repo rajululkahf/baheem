@@ -351,11 +351,11 @@ encryption is secure as well.
 In this example, the caller is expected to initialise a $128$ bits key
 $\mathbf{k}$, a pair of random pads, $\mathbf{p}$ and $\mathbf{q}$, each of
 which is $\mathtt{len} \times 128$ bits long, in order to encrypt a
-$\mathtt{len} \times 128$ bits long cleartext message $\mathbf{m}$. The
-encryption happens in-place, so the caller does not have to allocate
-separate memory for the output. Since $128$-bit wide CPU instructions are
-not common, this code operates in $64$-bit basis, each time with a
-different $64$-bit part of the key.
+$\mathtt{len} \times 64$ bits long cleartext message $\mathbf{m}$, where
+$\mathtt{len}$ is an even number. The encryption happens in-place, so the
+caller does not have to allocate separate memory for the output. Since
+$128$-bit wide CPU instructions are not common, this code operates in
+$64$-bit basis, each time with a different $64$-bit part of the key.
 
 \begin{verbatim}
 void baheem_enc(
