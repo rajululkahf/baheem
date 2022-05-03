@@ -189,7 +189,7 @@ The \baheem\ encryption is essentially the \gls{xor} cryptosystem:
     \mathbf{\hat m}_b \gets \mathbf{m}_b \oplus
     \underbrace{
         (\mathbf{p}_b + \mathbf{q}_b \bmod{2^{128}})
-    }_{\text{Encryption pad}}
+    }_{\text{One-time encryption pad}}
 \]
 
 It trivially follows from Shannon's perfect secrecy proof of the \gls{otp}
@@ -209,7 +209,8 @@ adversary found that:
 \begin{align*}
     0&=\mathbf{\hat p}_b = \mathbf{p}_b + \mathbf{k} \bmod{2^3}  \\
     3&=\mathbf{\hat q}_b = \mathbf{q}_b + \mathbf{k} \bmod{2^3}  \\
-    5&=\qquad\             \mathbf{p}_b + \mathbf{q}_b \bmod{2^3}\\
+    5&=\mathbf{\hat m}_b \oplus \mathbf{m}_b
+            = \mathbf{p}_b + \mathbf{q}_b \bmod{2^3}\\
 \end{align*}
 
 Then, the question is:  will this information reduce the space from which
@@ -406,7 +407,7 @@ Likewise, \cref{lst_baheem_c_dec} shows an example implementing the
 corresponding in-place decryption function.
 
 \begin{table}[tbh]
-\begin{lstlisting}[language=C, caption=Decryption funciton example.,
+\begin{lstlisting}[language=C, caption=Decryption function example.,
                    label=lst_baheem_c_dec,captionpos=b]
 void baheem_dec(... same input ...) {
     size_t i;
@@ -483,7 +484,7 @@ Core i5-3570K CPU, 32GB RAM, 7200 RPM hard disks, Linux
 
 \Cref{tbl_benchmark} shows that, while the early \baheem\ prototype,
 \alyal, has a faster decryption run-time than OpenSSL's ChaCha20, it has
-slower encryption run-time. However:
+a slower encryption run-time. However:
 \begin{enumerate}
     \item The differences in run-time are insignificant for most
         applications, which proves \baheem's practical utility in the real
@@ -504,7 +505,7 @@ slower encryption run-time. However:
 \section{Conclusions}
 This paper proposed \baheem\ with the following properties:
 \begin{description}[itemsep=0em]
-    \item[Secure:] No cryptanalysis can degrade its
+    \item[Provably secure:] No cryptanalysis can degrade its
         security below $\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$
         bits.
 
