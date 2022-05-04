@@ -20,6 +20,12 @@
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{nicematrix}
 \usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily,
+  columns=fullflexible,
+    commentstyle=\color{gray}\ttfamily,
+  keepspaces=true,
+}
 \newcommand{\baheem}{Băhēm}
 \newcommand{\alyal}{Alyal}
 \newcommand\blfootnote[1]{%
@@ -70,10 +76,11 @@ under Grover's algorithm \cite{10.1145/237814.237866} or even if it turned
 out that $\P = \NP$.
 
 Aside from the cost of memory access and input/output processing, \baheem\
-is also highly parallelise-able, and requires only three additions and one
-\gls{xor} in order to encrypt or decrypt.
+requires only three additions (one per-session, two per-block) and one
+\gls{xor} in order to encrypt or decrypt, and is also highly
+parallelise-able.
 
-Despite \baheem's $2$-bits overhead per cleartext bit, its early prototype,
+Despite \baheem's $1$-bit overhead per cleartext bit, its early prototype,
 \alyal, achieved similar run-time speeds to OpenSSL's ChaCha20
 \cite{chacha20}; slightly faster decryption, while slightly slower
 encryption when the \gls{trng} was prepared in a file in advance.  This
@@ -109,12 +116,14 @@ encryption and decryption.
         \Vert \ldots \Vert
         \mathbf{m}_{\lceil\frac{|\mathbf{m}|}{128}\rceil} = \mathbf{m}$.
 
-    \item[$\mathbf{p}_b = \random(128), \mathbf{q}_b = \random(128)$:]  A
-        pair of uniformly distributed $128$ many random bits.
+    \item[$\mathbf{s} = \random(128)$:]  Session key.
 
-    \item[$\mathbf{\hat p}_b, \mathbf{\hat q}_b, \mathbf{\hat m}_b$:]
-        Encrypted forms of $\mathbf{p}_b$, $\mathbf{q}_b$ and
-        $\mathbf{m}_b$, respectively.
+    \item[$\mathbf{p}_b = \random(128)$:]  Pad key of the $b^{\text{th}}$
+        block.
+
+    \item[$\mathbf{\hat s}, \mathbf{\hat p}_b, \mathbf{\hat m}_b$:]
+        Encrypted $\mathbf{s}$, $\mathbf{p}_b$ and $\mathbf{m}_b$,
+        respectively.
 \end{description}
 
 %\vfill
@@ -135,22 +144,21 @@ $\mathbf{m}_0, \mathbf{m}_1, \ldots,
     \SetKwInOut{Output}{output}
     \Input{$\mathbf{k}, \mathbf{m}_0, \mathbf{m}_1, \ldots$}
     \Output{$
-        (\mathbf{\hat p}_0, \mathbf{\hat q}_0, \mathbf{\hat m}_0),
-        (\mathbf{\hat p}_1, \mathbf{\hat q}_1, \mathbf{\hat m}_1),
+        \mathbf{\hat s},
+        (\mathbf{\hat p}_0, \mathbf{\hat m}_0),
+        (\mathbf{\hat p}_1, \mathbf{\hat m}_1),
         \ldots
     $}
     \hrulefill\\
+    $\mathbf{s} \gets \random(128)$\\
+    $\mathbf{\hat s} \gets \mathbf{s} + \mathbf{k} \bmod{2^{128}}$\\
     \For{$b \in (0, 1, \ldots, \lceil\frac{|\mathbf{m}|}{128}\rceil-1)$}{
         $\mathbf{p}_b \gets \random(128)$\\
-        $\mathbf{q}_b \gets \random(128)$\\
         $\mathbf{\hat p}_b
             \gets \mathbf{p}_b + \mathbf{k}
             \bmod{2^{128}}$\\
-        $\mathbf{\hat q}_b
-            \gets \mathbf{q}_b + \mathbf{k}
-            \bmod{2^{128}}$\\
         $\mathbf{\hat m}_b
-            \gets \mathbf{m}_b \oplus (\mathbf{p}_b + \mathbf{q}_b
+            \gets \mathbf{m}_b \oplus (\mathbf{p}_b + \mathbf{s}
             \bmod{2^{128}})$\\
     }
     \caption{\baheem\ encryption}
@@ -161,22 +169,21 @@ $\mathbf{m}_0, \mathbf{m}_1, \ldots,
     \SetKwInOut{Input}{input}
     \SetKwInOut{Output}{output}
     \Input{$
-        \mathbf{k}, 
-        (\mathbf{\hat p}_0, \mathbf{\hat q}_0, \mathbf{\hat m}_0),
-        (\mathbf{\hat p}_1, \mathbf{\hat q}_1, \mathbf{\hat m}_1),
+        \mathbf{k},
+        \mathbf{\hat s},
+        (\mathbf{\hat p}_0, \mathbf{\hat m}_0),
+        (\mathbf{\hat p}_1, \mathbf{\hat m}_1),
         \ldots
     $}
     \Output{$\mathbf{m}_0, \mathbf{m}_1, \ldots$}
     \hrulefill\\
+    $\mathbf{s} \gets \mathbf{\hat s} - \mathbf{k} \bmod{2^{128}}$\\
     \For{$b \in (0, 1, \ldots, \lceil\frac{|\mathbf{m}|}{128}\rceil-1)$}{
         $\mathbf{p}_b
             \gets \mathbf{\hat p}_b - \mathbf{k}
             \bmod{2^{128}}$\\
-        $\mathbf{q}_b
-            \gets \mathbf{\hat q}_b - \mathbf{k}
-            \bmod{2^{128}}$\\
         $\mathbf{m}_b
-            \gets \mathbf{\hat m}_b \oplus (\mathbf{p}_b + \mathbf{q}_b
+            \gets \mathbf{\hat m}_b \oplus (\mathbf{p}_b + \mathbf{s}
             \bmod{2^{128}})$\\
     }
     \caption{\baheem\ decryption}
@@ -188,7 +195,7 @@ The \baheem\ encryption is essentially the \gls{xor} cryptosystem:
 \[
     \mathbf{\hat m}_b \gets \mathbf{m}_b \oplus
     \underbrace{
-        (\mathbf{p}_b + \mathbf{q}_b \bmod{2^{128}})
+        (\mathbf{p}_b + \mathbf{s} \bmod{2^{128}})
     }_{\text{One-time encryption pad}}
 \]
 
@@ -200,17 +207,17 @@ To simplify the analysis, suppose that the size of a block in \baheem\ is
 $3$ bits only, and that the cleartext block $\mathbf{m}_b$ is known to the
 adversary, which implies that the adversary can trivially know that:
 \[
-    \mathbf{p}_b + \mathbf{q}_b \bmod{2^3}
+    \mathbf{p}_b + \mathbf{s} \bmod{2^3}
     = \mathbf{\hat m}_b \oplus \mathbf{m}_b
 \]
 in addition to adversary's knowledge of the public variables $\mathbf{\hat
-p}_b$ and $\mathbf{\hat q}_b$. More specifically, suppose that the
+s}$ and $\mathbf{\hat p}_b$. More specifically, suppose that the
 adversary found that:
 \begin{align*}
-    0&=\mathbf{\hat p}_b = \mathbf{p}_b + \mathbf{k} \bmod{2^3}  \\
-    3&=\mathbf{\hat q}_b = \mathbf{q}_b + \mathbf{k} \bmod{2^3}  \\
+    0&=\mathbf{\hat s} = \mathbf{s} + \mathbf{k} \bmod{2^3}  \\
+    3&=\mathbf{\hat p}_b = \mathbf{p}_b + \mathbf{k} \bmod{2^3}  \\
     5&=\mathbf{\hat m}_b \oplus \mathbf{m}_b
-            = \mathbf{p}_b + \mathbf{q}_b \bmod{2^3}\\
+            = \mathbf{p}_b + \mathbf{s} \bmod{2^3}\\
 \end{align*}
 
 Then, the question is:  will this information reduce the space from which
@@ -249,19 +256,19 @@ the same conclusions hold even with a $128$-bit unsigned addition and any
 other output numbers than $0$, $3$ and $5$.
 
 Therefore, we can conclude that adversary's knowledge of the public
-variables $\mathbf{\hat p}_b$, $\mathbf{\hat q}_b$, $\mathbf{\hat m}_b$ and
+variables $\mathbf{\hat s}$, $\mathbf{\hat p}_b$, $\mathbf{\hat m}_b$ and
 the cleartext $\mathbf{m}_b$, which leads to deducing $\mathbf{p}_b +
-\mathbf{q}_b \bmod{2^{128}}$, can not reduce the space from which
-$\mathbf{k}$, $\mathbf{p}_q$ and $\mathbf{q}_q$ are sampled.
+\mathbf{s} \bmod{2^{128}}$, can not reduce the space from which
+$\mathbf{k}$, $\mathbf{s}$ and $\mathbf{p}_b$ are sampled.
 
-If $\mathbf{k}$, $\mathbf{p}_q$ and $\mathbf{q}_q$ are generated by a
+If $\mathbf{k}$, $\mathbf{s}$ and $\mathbf{p}_b$ are generated by a
 \gls{trng}, then any of the $2^{128}$ many possiblities are equally likely
-to correspond to the actual values of $\mathbf{k}$, $\mathbf{p}_q$ and
-$\mathbf{q}_q$.  In other words:
+to correspond to the actual values of $\mathbf{k}$, $\mathbf{s}$ and
+$\mathbf{p}_b$.  In other words:
 \[
-    \entropy(\mathbf{k},\mathbf{p}_q,\mathbf{q}_q
-        | \mathbf{\hat p}_b,
-          \mathbf{\hat q}_b,
+    \entropy(\mathbf{k},\mathbf{s},\mathbf{p}_b
+        | \mathbf{\hat s},
+          \mathbf{\hat p}_b,
           \mathbf{\hat m}_b,
           \mathbf{m}_b
     )
@@ -270,34 +277,34 @@ $\mathbf{q}_q$.  In other words:
 
 However, since $\mathbf{k}$ could be derived from a password, such that it
 looks random, but with an entropy $\entropy(\mathbf{k}) \le 128$, and since
-finding any of the numbers $\mathbf{k}$, $\mathbf{p}_q$ and $\mathbf{q}_q$
+finding any of the numbers $\mathbf{k}$, $\mathbf{s}$ and $\mathbf{p}_b$
 deterministically leads to finding the others, therefore it follows that:
 \[
-    \entropy(\mathbf{k},\mathbf{p}_q,\mathbf{q}_q
-        | \mathbf{\hat p}_b,
-          \mathbf{\hat q}_b,
+    \entropy(\mathbf{k},\mathbf{s},\mathbf{p}_b
+        | \mathbf{\hat s},
+          \mathbf{\hat p}_b,
           \mathbf{\hat m}_b,
           \mathbf{m}_b
     )
     = \entropy(\mathbf{k})
 \]
 
-The numbers $\mathbf{p}_q$ and $\mathbf{q}_q$ are generated by a \gls{trng}
-by definition, therefore the weakest element in the chain can be only
+The numbers $\mathbf{s}$ and $\mathbf{p}_b$ are generated by a \gls{trng}
+by definition, therefore the weakest element in the chain can only be
 $\mathbf{k}$.
 
-Since the public variables $\mathbf{\hat p}_b$, $\mathbf{\hat q}_b$ and
+Since the public variables $\mathbf{\hat s}$, $\mathbf{\hat p}_b$ and
 $\mathbf{\hat m}_b$, and the cleartext $\mathbf{m}_b$ are exhaustively all
 of the outputs of \baheem\ that can be accessible to an adversary, and
-since they can not reduce \baheem's parameters space below
-$\entropy(\mathbf{k})$, therefore no cryptanalysis can reduce the entropy
-of \baheem's private variables below $\entropy(\mathbf{k})$.
+since they can not reduce \baheem's private variables' space below
+$\entropy(\mathbf{k})$, therefore no cryptanalysis can reduce their entropy
+below $\entropy(\mathbf{k})$.
 
 \begin{lemma}[Secure private values]
     \[
-        \entropy(\mathbf{k},\mathbf{p}_q,\mathbf{q}_q
-            | \mathbf{\hat p}_b,
-              \mathbf{\hat q}_b,
+        \entropy(\mathbf{k},\mathbf{s},\mathbf{p}_b
+            | \mathbf{\hat s},
+              \mathbf{\hat p}_b,
               \mathbf{\hat m}_b,
               \mathbf{m}_b
         )
@@ -307,18 +314,18 @@ of \baheem's private variables below $\entropy(\mathbf{k})$.
 \end{lemma}
 
 It is trivially implied from \cref{thrm_baheem_secure_private_values} that,
-since the private values $\mathbf{p}_b$ and $\mathbf{q}_b$ maintain an
+since the private values $\mathbf{s}$ and $\mathbf{p}_b$ maintain an
 entropy of $\entropy(\mathbf{k})$, so does their $128$-bit summation
-$\mathbf{p} + \mathbf{q} \bmod{2^{128}}$, which is \baheem's \gls{xor}
+$\mathbf{s} + \mathbf{p}_b \bmod{2^{128}}$, which is \baheem's \gls{xor}
 encryption pad.  Therefore, \baheem's encryption pad has to be secure as
 well.
 
 \begin{lemma}[Secure encryption pad]
     \[
         \entropy(
-            \mathbf{p} + \mathbf{q} \bmod{2^{128}}
-            | \mathbf{\hat p}_b,
-              \mathbf{\hat q}_b,
+            \mathbf{s} + \mathbf{p}_b \bmod{2^{128}}
+            | \mathbf{\hat s},
+              \mathbf{\hat p}_b,
               \mathbf{\hat m}_b
         )
         = \min[\entropy(\mathbf{m}_b), \entropy(\mathbf{k})]
@@ -337,8 +344,8 @@ $\entropy(\mathbf{m}_b)$-bits secure, whichever is smaller.
     \[
         \entropy(
             \mathbf{m}_b
-            | \mathbf{\hat p}_b,
-              \mathbf{\hat q}_b,
+            | \mathbf{\hat s},
+              \mathbf{\hat p}_b,
               \mathbf{\hat m}_b
         )
         = \min[\entropy(\mathbf{m}_b), \entropy(\mathbf{k})]
@@ -365,70 +372,87 @@ $\entropy(\mathbf{m}_b)$-bits secure, whichever is smaller.
 
 \section{Implementation Examples}
 \subsection{C Functions}
-In \cref{lst_baheem_c_enc}, the caller is expected to initialise a $128$
-bits key $\mathbf{k}$, a pair of random pads, $\mathbf{p}$ and
-$\mathbf{q}$, each of which is $\mathtt{len}$ long, in order to encrypt a
-$\mathtt{len}$ long cleartext message $\mathbf{m}$. The encryption happens
-in-place, so the caller does not have to allocate separate memory for the
-output. Since $128$-bit wide CPU instructions are not common, this code
-operates in $64$-bit basis, each time with a different $64$-bit part of the
-key.
+\Cref{lst_baheem_session_enc,lst_baheem_session_dec} show example C
+functions for encrypting and decrypting session keys.
 
-\lstset{
-  basicstyle=\ttfamily,
-  columns=fullflexible,
-    commentstyle=\color{gray}\ttfamily,
-  keepspaces=true,
+\Cref{lst_baheem_block_enc,lst_baheem_block_dec} show the same but for
+encrypting and decrypting cleartext and ciphertext blocks, respectively.
+
+In these examples, all encryptions and decryptions happen in-place whenever
+possible, so the caller does not have to allocate separate memory for the
+output.  The only excepton is \cref{lst_baheem_session_enc}, where the
+unencrypted session key is required to encrypt the subsequent cleartext
+blocks. Also, since $128$-bit wide CPU instructions are not common, the
+examples operate in $64$-bit basis, each time with a different $64$-bit
+part of the pre-shared and session keys.
+
+\begin{lstlisting}[language=C, caption=Session key encryption function
+                   example., label=lst_baheem_session_enc]
+void baheem_session_enc(
+    uint64_t *k,    /* pre-shared key */
+    uint64_t *s,    /* session key    */
+    uint64_t *s_enc /* encrypted s    */
+) {
+    s_enc[0] = s[0] + k[0];
+    s_enc[1] = s[1] + k[1];
 }
-\begin{table}[tbh]
-\begin{lstlisting}[language=C, caption=Encryption function example.,
-                   label=lst_baheem_c_enc,captionpos=b]
-void baheem_enc(
-    uint64_t *k, /* 128bit pre-shared key */
-    uint64_t *p, /* random pad 1          */
-    uint64_t *q, /* random pad 2          */
-    uint64_t *m, /* message               */
-    size_t  len  /* length of m = p = q   */
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, caption=Session key decryption function
+                   example., label=lst_baheem_session_dec]
+void baheem_session_dec(
+    uint64_t *k, /* pre-shared key */
+    uint64_t *s  /* session key    */
+) {
+    s[0] -= k[0];
+    s[1] -= k[1];
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, caption=Block encryption function example.,
+                   label=lst_baheem_block_enc]
+void baheem_block_enc(
+    uint64_t *k, /* pre-shared key    */
+    uint64_t *s, /* session key       */
+    uint64_t *p, /* pad keys          */
+    uint64_t *m, /* message           */
+    size_t  len  /* length of m and p */
 ) {
     size_t i;
     for (i = 0; i < len; i += 2) {
-        m[i]   ^= p[i]   + q[i];
-        m[i+1] ^= p[i+1] + q[i+1];
+        m[i]   ^= p[i]   + s[0];
+        m[i+1] ^= p[i+1] + s[1];
         p[i]   += k[0];
-        q[i]   += k[0];
         p[i+1] += k[1];
-        q[i+1] += k[1];
     }
 }
 \end{lstlisting}
-\end{table}
 
-Likewise, \cref{lst_baheem_c_dec} shows an example implementing the
-corresponding in-place decryption function.
-
-\begin{table}[tbh]
-\begin{lstlisting}[language=C, caption=Decryption function example.,
-                   label=lst_baheem_c_dec,captionpos=b]
-void baheem_dec(... same input ...) {
+\begin{lstlisting}[language=C, caption=Block decryption function example.,
+                   label=lst_baheem_block_dec]
+void baheem_block_dec(
+    uint64_t *k, /* pre-shared key    */
+    uint64_t *s, /* session key       */
+    uint64_t *p, /* pad keys          */
+    uint64_t *m, /* message           */
+    size_t  len  /* length of m and p */
+) {
     size_t i;
     for (i = 0; i < len; i += 2) {
         p[i]   -= k[0];
-        q[i]   -= k[0];
         p[i+1] -= k[1];
-        q[i+1] -= k[1];
-        m[i]   ^= p[i]   + q[i];
-        m[i+1] ^= p[i+1] + q[i+1];
+        m[i]   ^= p[i]   + s[0];
+        m[i+1] ^= p[i+1] + s[1];
     }
 }
 \end{lstlisting}
-\end{table}
 
 
 \subsection{A File Encryption Tool}
 \alyal\ is an single-threaded implementation to demonstrate \baheem's
 practical utility with real-world scenarios.  Internally, Alyal uses the
-\texttt{baheem\_enc} and \texttt{baheem\_dec} functions that were presented
-earlier in this section.
+functions in
+\cref{lst_baheem_session_enc,lst_baheem_session_dec,lst_baheem_block_enc,lst_baheem_block_dec}.
 
 \subsubsection{Installation}
 \begin{verbatim}
@@ -468,12 +492,12 @@ Core i5-3570K CPU, 32GB RAM, 7200 RPM hard disks, Linux
                 & OpenSSL            & \multicolumn{2}{c}{\alyal}                \\
                 & ChaCha20           & \multicolumn{2}{c}{\baheem}               \\
                 &                    & \texttt{/dev/random} & \texttt{file.rand} \\\hline
-        Encrypt & \textbf{0.87} secs & 3.91 secs            & 1.40 secs          \\
-        500MB   & \textbf{1.04} secs & 4.25 secs            & 1.82 secs          \\
-                & \textbf{1.04} secs & 4.27 secs            & 1.73 secs          \\\hline
-        Decrypt & 0.90 secs          & \multicolumn{2}{c}{\textbf{0.64} secs}    \\
-        500MB   & 1.06 secs          & \multicolumn{2}{c}{\textbf{0.89} secs}    \\
-                & 1.06 secs          & \multicolumn{2}{c}{\textbf{0.81} secs}    \\
+        Encrypt & \textbf{0.90} secs & 2.58 secs            & 1.38 secs          \\
+        500MB   & \textbf{1.06} secs & 2.60 secs            & 1.35 secs          \\
+                & \textbf{1.04} secs & 2.58 secs            & 1.35 secs          \\\hline
+        Decrypt & 0.89 secs          & \multicolumn{2}{c}{\textbf{0.82} secs}    \\
+        500MB   & 1.12 secs          & \multicolumn{2}{c}{\textbf{0.87} secs}    \\
+                & 1.06 secs          & \multicolumn{2}{c}{\textbf{0.82} secs}    \\
     \end{tabular}
     \caption{Wall-clock run-time comparison between OpenSSL's ChaCha20, and
     \alyal's \baheem\ implementation with two sources as the \gls{trng}:
@@ -490,7 +514,8 @@ a slower encryption run-time. However:
         applications, which proves \baheem's practical utility in the real
         world.
     \item \baheem's provable security should arguably justify waiting the
-        $3$ extra seconds for the 500MB data, specially that many user
+        extra seconds, or fractions of seconds in case the \gls{trng} is
+        prepared in advance, for the 500MB data, specially that many user
         applications involve encrypting much smaller data sizes with
         unnoticeable time difference
     \item Preparing the random bits in advance significantly reduces the
@@ -509,16 +534,16 @@ This paper proposed \baheem\ with the following properties:
         security below $\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$
         bits.
 
-    \item[Fast:] Requires only three additions and a single \gls{xor} per
-        encryption or decryption alike.
+    \item[Fast:] Requires only three additions (one per-session, two
+        per-block) and a single \gls{xor} per encryption or decryption
+        alike.
 
         Highly parallelisable as the encryption, or decryption, of any bit
         is independent of other bits.
 
         \baheem's single-threaded prototype, \alyal, outperformed OpenSSL's
-        ChaCha20 when decrypting files, despite \baheem's $2$ bits
-        overhead, which demonstrates that such overhead is negligible in
-        practice.
+        ChaCha20 when decrypting files, despite \baheem's $1$-bit overhead,
+        which demonstrates that such overhead is negligible in practice.
 
         While the prototype has a slower encryption run-time due to its use
         of a \gls{trng}, optimising it is trivial by preparing the
