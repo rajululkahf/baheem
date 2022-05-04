@@ -76,19 +76,19 @@ under Grover's algorithm \cite{10.1145/237814.237866} or even if it turned
 out that $\P = \NP$.
 
 Aside from the cost of memory access and input/output processing, \baheem\
-requires only three additions (one per-session, two per-block) and one
-\gls{xor} in order to encrypt or decrypt, and is also highly
+requires only one addition per-session, and two additions and one \gls{xor}
+per-block, in order to encrypt or decrypt, and is also highly
 parallelise-able.
 
-Despite \baheem's $1$-bit overhead per cleartext bit, its early prototype,
-\alyal, achieved similar run-time speeds to OpenSSL's ChaCha20
-\cite{chacha20}; slightly faster decryption, while slightly slower
-encryption when the \gls{trng} was prepared in a file in advance.  This
-demonstrates that \baheem\ is practicality usable for many real-world
-application scenarios.
+Despite \baheem's $128 + 2|\mathbf{m}|$ bits overhead per $|\mathbf{m}|$
+bits cleartext, its early prototype, \alyal, achieved similar run-time
+speeds to OpenSSL's ChaCha20 \cite{chacha20}; slightly faster decryption,
+while slightly slower encryption when the \gls{trng} was prepared in a file
+in advance.  This demonstrates that \baheem\ is also practicality usable
+for many real-world applications.
 
 Later implementations, with better \gls{trng} optimisations and
-parallelism, must allow the prototype a faster run-time for both,
+parallelism, must allow the prototype an even faster run-time for both,
 encryption and decryption.
 
 \section*{Notation}
