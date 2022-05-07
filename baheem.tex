@@ -5,8 +5,8 @@
     modifier={by},
     version={4.0},
     imagedistance={.5em},
-    %imagewidth={5.5em},
-    %imagemodifier={-80x15},
+    imagewidth={7em},
+    imagemodifier={-80x15},
 ]{doclicense}
 \usepackage[margin=1in,columnsep=1em]{geometry}
 \usepackage{enumitem} % to control gaps in description lists
@@ -20,11 +20,12 @@
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{nicematrix}
 \usepackage{listings}
+\usepackage{seqsplit}
 \lstset{
-  basicstyle=\ttfamily,
-  columns=fullflexible,
+    basicstyle=\ttfamily,
+    columns=fullflexible,
     commentstyle=\color{gray}\ttfamily,
-  keepspaces=true,
+    keepspaces=true,
 }
 \newcommand{\baheem}{Băhēm}
 \newcommand{\alyal}{Alyal}
@@ -50,61 +51,86 @@
 \newcommand{\pq}[1]{\cellcolor{red!20}#1}
 \newcommand{\ph}[1]{\cellcolor{blue!20}#1}
 \newcommand{\qh}[1]{\cellcolor{green!20}#1}
+\hyphenation{bottle-neck}
 \usepackage{cleveref} % must be loaded last
 \begin{document}
 
 \begin{center}
     \Huge
     \baheem\\
-    \Large
-    Provably Secure Symmetric Cipher\\
+    \LARGE
+    A Symmetric Cipher with Provable $128$-bit Security\\
     \normalsize
     \vspace{0.5em}
     M. Rajululkahf\,\orcidlink{0000-0001-9061-2921}\footnote{Author's e-mail address: \{last
     name\}\url{@pm.me}}\\
     \vspace{0.5em}
     \footnotesize
-    \today\\
+    \today
 \end{center}
 
 \section*{Overview}
-This paper proposes \baheem;  a symmetric cipher that, when given a
-random-looking key $\mathbf{k}$, a \gls{trng} and a cleartext message
-$\mathbf{m}$ to encrypt, no cryptanalysis can degrade its security below
-$\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$ bits of entropy, even
-under Grover's algorithm \cite{10.1145/237814.237866} or even if it turned
-out that $\P = \NP$.
+This paper proposes a symmetric cipher, which I name \emph\baheem, with the
+following properties:
+\begin{description}
+    \item[Practical:]  Requires pre-sharing only a $128$-bits key.
 
-Aside from the cost of memory access and input/output processing, \baheem\
-requires only one addition per-session, and two additions and one \gls{xor}
-per-block, in order to encrypt or decrypt, and is also highly
-parallelise-able.
+    \item[Provably secure:]  No cryptanalysis can degrade its security
+        below $\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$ bits of
+        entropy, even under Grover's algorithm \cite{10.1145/237814.237866}
+        or even if it turned out that $\P = \NP$.
 
-Despite \baheem's $128 + 2|\mathbf{m}|$ bits overhead per $|\mathbf{m}|$
-bits cleartext, its early prototype, \alyal, achieved similar run-time
-speeds to OpenSSL's ChaCha20 \cite{chacha20}; slightly faster decryption,
-while slightly slower encryption when the \gls{trng} was prepared in a file
-in advance.  This demonstrates that \baheem\ is also practicality usable
-for many real-world applications.
+    \item[Post-apocalypse:]   Should computers cease to exist or function,
+        its encryption and decryption can be done by hand with a pen, a
+        paper and some fair dies to roll, with relative ease.  This is
+        thanks to it requiring only one addition per-session, and two
+        additions and one \gls{xor} per-block.
 
-Later implementations, with better \gls{trng} optimisations and
-parallelism, must allow the prototype an even faster run-time for both,
-encryption and decryption.
+    \item[Fast:]  Runs fast on common hardware.  Its early single-threaded
+        implementation achieved similar run-time speeds to OpenSSL's
+        ChaCha20 \cite{chacha20}. Faster speed is easily doable with
+        parallelism and better \gls{trng} optimisations.
+\end{description}
+
+This comes at a usually-negligible cost of having a $128 +
+2|\mathbf{m}|$-bit ciphertext output for a $|\mathbf{m}|$-bit cleartext
+input; since space is usually not a bottleneck for most applications. 
+
+\baheem\ is the only symmetric cipher to-date that is \emph{practical} and
+\emph{provably secure}.  Other ciphers are only one of them, but not both.
+For example, the \gls{otp} is provably secure but usually impractical, as
+it requires pre-sharing a key that is as large as the message to encrypt.
+On the other hand, state of art ciphers, such as ChaCha20 \cite{chacha20}
+or AES \cite{aes}, are practical but not provably secure.
+
+\blfootnote{\seqsplit{\\
+EF91FF90DF73A9D76E4841C76D5CB15E7E909C309B307BED15BFB4
+E1183B6B9903FA78447E87F166F93B002803B99C0C72C479C253E3
+D7A5D6BDF320DC0EDBDA}}
+\blfootnote{\vspace{-1em}\doclicenseThis}
+\vfill
+\break
+
+\section*{Declarations}
+All data used in this study is included in this paper.  The latest version
+of this paper can be found
+here\footnote{\url{https://codeberg.org/rajululkahf/baheem}}, and the
+latest version of the implementation can be found
+here\footnote{\url{https://codeberg.org/rajululkahf/alyal}}.
 
 \section*{Notation}
-\begin{description}[itemsep=0em]
+\begin{description}
     \item[$\entropy(\mathbf{x})$:]  Shannon's entropy of random variable
         $\mathbf{x}$.
 
     \item[$\mathbf{x} + \mathbf{y} \bmod{2^{128}}$:]  Unsigned $128$-bit
         addition.
 
-    \item[$\random(128)$:]  A sequence of $128$ many random bits generated
-        by a \gls{trng}.
+    \item[$\random(128)$:]  $128$ bits generated by a \gls{trng}.
 
-    \item[$\mathbf{k}$:]  A $128$-bit pre-shared secret key with enough
-        $\entropy(\mathbf{k})$ that looks random.  Ideally $\mathbf{k} =
-        \random(128)$.
+    \item[$\mathbf{k}$:]  $128$-bit pre-shared secret key.  Must seem
+        random and uniformly distributed with large enough
+        $\entropy(\mathbf{k})$.  Ideally, $\mathbf{k} = \random(128)$.
 
     \item[$\mathbf{m}$:]  A cleartext message of $|\mathbf{m}|$ many bits.
 
@@ -126,14 +152,41 @@ encryption and decryption.
         respectively.
 \end{description}
 
-%\vfill
-\break
-
 \tableofcontents
 
-\blfootnote{\vspace{-1em}\doclicenseThis}
+\section{Introduction}
+Today's state of art symmetric ciphers, such as ChaCha20 or AES, are
+attractive for their practicality (requiring only a small, say, $256$-bit
+key to pre-share), and for their probable security which is supported by
+the failure of the many attempts to break them so far.
 
-\section{Proposed Algorithm}
+However, it remains unknown whether they are actually secure.  It is even
+known if it is possible for them to be secure at all, since it remains
+unknown whether $\P \ne \NP$. This uncertainty about their security is
+quite risky, as encrypted sensitive data is often exposed over public
+networks.  Should such ciphers be discovered to be broken, one can decrypt
+the previously exposed sensitive data.
+
+On the other hand, Shannon's \gls{otp} is more than just provably secure,
+as it satisfies the higher criteria of having \emph{perfect secrecy}; that
+is, no cryptanalysis can degrade its security below $\entropy(\mathbf{m})$
+many bits.
+
+However, the \gls{otp} is usually impractical as it requires the
+communicating parties to exchange keys that are as large as the size of the
+messages that they will be exchanging in the future.  This often implies
+the necessity to exchange many gigabytes, or terabytes, of truly random
+bits in advance of the communication, which is too difficult to satisfy
+with most application scenarios.
+
+Due to \gls{otp}'s impractically, most applications choose to rather adopt
+the \emph{practically} secure (but not provably) ciphers like ChaCha20 or
+AES, in order to avoid the unscalable constraint of having to exchange
+large random bits in advance of their communication.
+
+
+
+\section{Proposed Algorithm: \baheem}
 \Cref{alg_enc,alg_dec} show \baheem's encryption and decryption by which
 the process is repeated over every $128$-bit blocks of $\mathbf{m}$:
 $\mathbf{m}_0, \mathbf{m}_1, \ldots,
@@ -370,121 +423,10 @@ $\entropy(\mathbf{m}_b)$-bits secure, whichever is smaller.
 \end{description}
 
 
-\section{Implementation Examples}
-\subsection{C Functions}
-\Cref{lst_baheem_session_enc,lst_baheem_session_dec} show example C
-functions for encrypting and decrypting session keys.
-
-\Cref{lst_baheem_block_enc,lst_baheem_block_dec} show the same but for
-encrypting and decrypting cleartext and ciphertext blocks, respectively.
-
-In these examples, all encryptions and decryptions happen in-place whenever
-possible, so the caller does not have to allocate separate memory for the
-output.  The only excepton is \cref{lst_baheem_session_enc}, where the
-unencrypted session key is required to encrypt the subsequent cleartext
-blocks. Also, since $128$-bit wide CPU instructions are not common, the
-examples operate in $64$-bit basis, each time with a different $64$-bit
-part of the pre-shared and session keys.
-
-\begin{lstlisting}[language=C, caption=Session key encryption function
-                   example., label=lst_baheem_session_enc]
-void baheem_session_enc(
-    uint64_t *k,    /* pre-shared key */
-    uint64_t *s,    /* session key    */
-    uint64_t *s_enc /* encrypted s    */
-) {
-    s_enc[0] = s[0] + k[0];
-    s_enc[1] = s[1] + k[1];
-}
-\end{lstlisting}
-
-\begin{lstlisting}[language=C, caption=Session key decryption function
-                   example., label=lst_baheem_session_dec]
-void baheem_session_dec(
-    uint64_t *k, /* pre-shared key */
-    uint64_t *s  /* session key    */
-) {
-    s[0] -= k[0];
-    s[1] -= k[1];
-}
-\end{lstlisting}
-
-\begin{lstlisting}[language=C, caption=Block encryption function example.,
-                   label=lst_baheem_block_enc]
-void baheem_block_enc(
-    uint64_t *k, /* pre-shared key    */
-    uint64_t *s, /* session key       */
-    uint64_t *p, /* pad keys          */
-    uint64_t *m, /* message           */
-    size_t  len  /* length of m and p */
-) {
-    size_t i;
-    for (i = 0; i < len; i += 2) {
-        m[i]   ^= p[i]   + s[0];
-        m[i+1] ^= p[i+1] + s[1];
-        p[i]   += k[0];
-        p[i+1] += k[1];
-    }
-}
-\end{lstlisting}
-
-\begin{lstlisting}[language=C, caption=Block decryption function example.,
-                   label=lst_baheem_block_dec]
-void baheem_block_dec(
-    uint64_t *k, /* pre-shared key    */
-    uint64_t *s, /* session key       */
-    uint64_t *p, /* pad keys          */
-    uint64_t *m, /* message           */
-    size_t  len  /* length of m and p */
-) {
-    size_t i;
-    for (i = 0; i < len; i += 2) {
-        p[i]   -= k[0];
-        p[i+1] -= k[1];
-        m[i]   ^= p[i]   + s[0];
-        m[i+1] ^= p[i+1] + s[1];
-    }
-}
-\end{lstlisting}
-
-
-\subsection{A File Encryption Tool}
-\alyal\ is an single-threaded implementation to demonstrate \baheem's
-practical utility with real-world scenarios.  Internally, Alyal uses the
-functions in
-\cref{lst_baheem_session_enc,lst_baheem_session_dec,lst_baheem_block_enc,lst_baheem_block_dec}.
-
-\subsubsection{Installation}
-\begin{verbatim}
-git clone \
-  https://codeberg.org/rajululkahf/alyal
-cd alyal
-make
-make test
-\end{verbatim}
-
-\subsubsection{Usage}
-
-\begin{verbatim}
-alyal (enc|dec) IN OUT [TRNG]
-alyal help
-\end{verbatim}
-
-To encrypt a cleartext file \texttt{a} and save it as file \texttt{b}:
-\begin{verbatim}
-alyal enc a b
-\end{verbatim}
-
-To decrypt the latter back to its cleartext form and save it as file
-\texttt{c}:
-\begin{verbatim}
-alyal dec b c
-\end{verbatim}
-
-\subsubsection{Benchmark}
+\section{Benchmark}
 This is a benchmark that was performed on a computer with a 3.4GHz Intel
 Core i5-3570K CPU, 32GB RAM, 7200 RPM hard disks, Linux
-5.17.4-gentoo-x86-64, and OpenSSL 1.1.1n.
+5.17.4-gentoo-x86-64, OpenSSL 1.1.1n and Alyal v3.
 
 \begin{table}[tbh]
     \centering
@@ -569,14 +511,120 @@ This paper proposed \baheem\ with the following properties:
         the pen and paper method.
 \end{description}
 
-\section*{Declarations}
-All data generated or analysed during this study are included in this
-published article.  Implementation code is available in the following
-repository:
-
-\url{https://codeberg.org/rajululkahf/alyal}
-
 \bibliographystyle{unsrt}
 \bibliography{references}
+
+\appendix
+\section{Implementation Examples}
+\subsection{Pens, Papers and Fair Dies}
+
+\subsection{C Functions}
+\Cref{lst_baheem_session_enc,lst_baheem_session_dec} show example C
+functions for encrypting and decrypting session keys.
+
+\Cref{lst_baheem_block_enc,lst_baheem_block_dec} show the same but for
+encrypting and decrypting cleartext and ciphertext blocks, respectively.
+
+In these examples, all encryptions and decryptions happen in-place whenever
+possible, so the caller does not have to allocate separate memory for the
+output.  The only excepton is \cref{lst_baheem_session_enc}, where the
+unencrypted session key is required to encrypt the subsequent cleartext
+blocks. Also, since $128$-bit wide CPU instructions are not common, the
+examples operate in $64$-bit basis, each time with a different $64$-bit
+part of the pre-shared and session keys.
+
+\begin{lstlisting}[language=C, caption=Session key encryption function
+                   example., label=lst_baheem_session_enc]
+void baheem_session_enc(
+    uint64_t *k,    /* pre-shared key */
+    uint64_t *s,    /* session key    */
+    uint64_t *s_enc /* encrypted s    */
+) {
+    s_enc[0] = s[0] + k[0];
+    s_enc[1] = s[1] + k[1];
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, caption=Session key decryption function
+                   example., label=lst_baheem_session_dec]
+void baheem_session_dec(
+    uint64_t *k, /* pre-shared key */
+    uint64_t *s  /* session key    */
+) {
+    s[0] -= k[0];
+    s[1] -= k[1];
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, caption=Block encryption function example.,
+                   label=lst_baheem_block_enc]
+void baheem_block_enc(
+    uint64_t *k, /* pre-shared key    */
+    uint64_t *s, /* session key       */
+    uint64_t *p, /* pad keys          */
+    uint64_t *m, /* message           */
+    size_t  len  /* length of m and p */
+) {
+    size_t i;
+    for (i = 0; i < len; i += 2) {
+        m[i]   ^= p[i]   + s[0];
+        m[i+1] ^= p[i+1] + s[1];
+        p[i]   += k[0];
+        p[i+1] += k[1];
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=C, caption=Block decryption function example.,
+                   label=lst_baheem_block_dec]
+void baheem_block_dec(
+    uint64_t *k, /* pre-shared key    */
+    uint64_t *s, /* session key       */
+    uint64_t *p, /* pad keys          */
+    uint64_t *m, /* message           */
+    size_t  len  /* length of m and p */
+) {
+    size_t i;
+    for (i = 0; i < len; i += 2) {
+        p[i]   -= k[0];
+        p[i+1] -= k[1];
+        m[i]   ^= p[i]   + s[0];
+        m[i+1] ^= p[i+1] + s[1];
+    }
+}
+\end{lstlisting}
+
+\subsection{A File Encryption Tool}
+\alyal\ is an single-threaded implementation to demonstrate \baheem's
+practical utility with real-world scenarios.  Internally, Alyal uses the
+functions in
+\cref{lst_baheem_session_enc,lst_baheem_session_dec,lst_baheem_block_enc,lst_baheem_block_dec}.
+
+\subsubsection{Installation}
+\begin{verbatim}
+git clone \
+  https://codeberg.org/rajululkahf/alyal
+cd alyal
+make
+make test
+\end{verbatim}
+
+\subsubsection{Usage}
+
+\begin{verbatim}
+alyal (enc|dec) IN OUT [TRNG]
+alyal help
+\end{verbatim}
+
+To encrypt a cleartext file \texttt{a} and save it as file \texttt{b}:
+\begin{verbatim}
+alyal enc a b
+\end{verbatim}
+
+To decrypt the latter back to its cleartext form and save it as file
+\texttt{c}:
+\begin{verbatim}
+alyal dec b c
+\end{verbatim}
 
 \end{document}
