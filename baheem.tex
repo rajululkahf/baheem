@@ -20,6 +20,7 @@
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{nicematrix}
 \usepackage{listings}
+\usepackage{cleveref}
 \usepackage{seqsplit}
 \lstset{
     basicstyle=\ttfamily,
@@ -47,6 +48,8 @@
 \newacronym{xor}{XOR}{bitwise exclusive-or operation}
 \newtheorem{lemma}{Lemma}
 \newtheorem{theorem}{Theorem}
+\newtheorem{tradeoff}{Trade-off}
+\crefname{tradeoff}{trade-off}{trade-offs}
 \renewcommand\qedsymbol{$\blacksquare$}
 \newcommand{\pq}[1]{\cellcolor{red!20}#1}
 \newcommand{\ph}[1]{\cellcolor{blue!20}#1}
@@ -62,8 +65,11 @@
     A Symmetric Cipher with Provable $128$-bit Security\\
     \normalsize
     \vspace{0.5em}
-    M. Rajululkahf\,\orcidlink{0000-0001-9061-2921}\footnote{Author's e-mail address: \{last
-    name\}\url{@pm.me}}\\
+    M. Rajululkahf\,\orcidlink{0000-0001-9061-2921}\footnote{Author's
+    e-mail address: \{last name\}\url{@pm.me}.  Public key: \seqsplit{
+        EF91FF90DF73A9D76E4841C76D5CB15E7E909C309B307BED15BFB4
+        E1183B6B9903FA78447E87F166F93B002803B99C0C72C479C253E3
+        D7A5D6BDF320DC0EDBDA}.}\\
     \vspace{0.5em}
     \footnotesize
     \today
@@ -103,11 +109,8 @@ it requires pre-sharing a key that is as large as the message to encrypt.
 On the other hand, state of art ciphers, such as ChaCha20 \cite{chacha20}
 or AES \cite{aes}, are practical but not provably secure.
 
-\blfootnote{\seqsplit{\\
-EF91FF90DF73A9D76E4841C76D5CB15E7E909C309B307BED15BFB4
-E1183B6B9903FA78447E87F166F93B002803B99C0C72C479C253E3
-D7A5D6BDF320DC0EDBDA}}
-\blfootnote{\vspace{-1em}\doclicenseThis}
+\blfootnote{}
+\blfootnote{\doclicenseThis}
 \vfill
 \break
 
@@ -157,15 +160,23 @@ here\footnote{\url{https://codeberg.org/rajululkahf/alyal}}.
 \section{Introduction}
 Today's state of art symmetric ciphers, such as ChaCha20 or AES, are
 attractive for their practicality (requiring only a small, say, $256$-bit
-key to pre-share), and for their probable security which is supported by
-the failure of the many attempts to break them so far.
+key to pre-share).  Their security is probable which is supported by the
+failure of the many attempts to break them so far.
 
 However, it remains unknown whether they are actually secure.  It is even
-known if it is possible for them to be secure at all, since it remains
-unknown whether $\P \ne \NP$. This uncertainty about their security is
-quite risky, as encrypted sensitive data is often exposed over public
-networks.  Should such ciphers be discovered to be broken, one can decrypt
-the previously exposed sensitive data.
+unknown if it is possible for a function in their class to exist, since it
+remains unknown whether $\P \ne \NP$. This uncertainty about their security
+is quite risky, as encrypted sensitive data is often exposed over public
+networks.  Should such ciphers be discovered to be broken, the previously
+encrypted data are effectively exposed.  In other words, such ciphers offer
+the following trade-off:
+
+\begin{tradeoff}
+    \emph{Enjoy} pre-sharing in advance only a small key
+    $|\mathbf{k}|=256$, and $|\mathbf{\hat m}| = |\mathbf{m}|$.
+    \emph{In return to} giving up provable security.
+    \label{tradeoff_otp}
+\end{tradeoff}
 
 On the other hand, Shannon's \gls{otp} is more than just provably secure,
 as it satisfies the higher criteria of having \emph{perfect secrecy}; that
@@ -175,15 +186,37 @@ many bits.
 However, the \gls{otp} is usually impractical as it requires the
 communicating parties to exchange keys that are as large as the size of the
 messages that they will be exchanging in the future.  This often implies
-the necessity to exchange many gigabytes, or terabytes, of truly random
-bits in advance of the communication, which is too difficult to satisfy
-with most application scenarios.
+the necessity to exchange many gigabytes, or terabytes, of true random bits
+in advance of the communication, which is too difficult to satisfy with
+most application scenarios.  In other words, \gls{otp} offers the following
+trade-off:
+
+\begin{tradeoff}
+    \emph{Enjoy} $\entropy(\mathbf{m})$-bit provable security, and
+    $|\mathbf{\hat m}| = |\mathbf{m}|$.
+    \emph{In return to} pre-sharing in advance a random pad that is as
+    large as the size of the sum of all messages that you will be
+    exchanging in the future.  For example, it could be that $|\mathbf{k}|
+    > 8 \times 10^{12}$ (terabytes).
+    \label{tradeoff_otp}
+\end{tradeoff}
 
 Due to \gls{otp}'s impractically, most applications choose to rather adopt
 the \emph{practically} secure (but not provably) ciphers like ChaCha20 or
 AES, in order to avoid the unscalable constraint of having to exchange
 large random bits in advance of their communication.
 
+\baheem\ essentially offers a unique trade-off in order to save provable
+security, while maintaining practicality for most applications.
+Specifically:
+
+\begin{tradeoff}
+    \emph{Enjoy} pre-sharing in advance only a $128$-bit key, with
+    $\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$-bit provable
+    security.
+    \emph{In return to} $|\mathbf{\hat m}| \approx 2|\mathbf{m}|$.
+    \label{tradeoff_baheem}
+\end{tradeoff}
 
 
 \section{Proposed Algorithm: \baheem}
@@ -406,22 +439,6 @@ $\entropy(\mathbf{m}_b)$-bits secure, whichever is smaller.
     \label{thrm_baheem_secure}
 \end{theorem}
 
-\begin{description}
-    \item[Note:] \baheem\ does not aim at achieving perfect secrecy, as
-        perfect secrecy requires a usually-impractical key that is as long
-        as the length $|\mathbf{m}|$ of the cleartext message $\mathbf{m}$
-        itself, with an unnecessarily too large upper security bound that
-        is worth $|\mathbf{m}|$ many bits of entropy.
-
-        \baheem\ rather aims at achieving a security that is worth
-        $\min[\entropy(\mathbf{m}_b), \entropy(\mathbf{k})]$ entropy bits.
-        Unlike the \gls{otp}, this is \emph{practically} secure and only
-        requires pre-sharing a small $128$-bit key.
-
-        Shannon's proof of perfect secrecy of the \gls{otp} is cited only
-        for its relevance as an \gls{xor} cryptosystem.
-\end{description}
-
 
 \section{Benchmark}
 This is a benchmark that was performed on a computer with a 3.4GHz Intel
@@ -594,7 +611,7 @@ void baheem_block_dec(
 }
 \end{lstlisting}
 
-\subsection{A File Encryption Tool}
+\subsection{A File Encryption Tool: Alyal}
 \alyal\ is an single-threaded implementation to demonstrate \baheem's
 practical utility with real-world scenarios.  Internally, Alyal uses the
 functions in
