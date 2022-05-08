@@ -86,11 +86,12 @@ following properties:
         entropy, even under Grover's algorithm \cite{10.1145/237814.237866}
         or even if it turned out that $\P = \NP$.
 
-    \item[Post-apocalypse:]   Should computers cease to exist or function,
-        its encryption and decryption can be done by hand with a pen, a
-        paper and some fair dies to roll, with relative ease.  This is
-        thanks to it requiring only one addition per-session, and two
-        additions and one \gls{xor} per-block.
+    \item[Simple:]  Encryption, and decryption alike, is performed in a
+        single round comprised of two additions and one \gls{xor}
+        operation.  A session key is generated once with a single addition.
+        Should computers cease to exist, encryption and decryption can be
+        performed by hand with a pen, a paper and some fair coins, with
+        relative ease.
 
     \item[Fast:]  Runs fast on common hardware.  Its early single-threaded
         implementation achieved similar run-time speeds to OpenSSL's
@@ -98,19 +99,19 @@ following properties:
         parallelism and better \gls{trng} optimisations.
 \end{description}
 
-This comes at a usually-negligible cost of having a $128 +
-2|\mathbf{m}|$-bit ciphertext output for a $|\mathbf{m}|$-bit cleartext
+This comes at a usually-negligible cost of having an approximately
+$2|\mathbf{m}|$-bit ciphertext output for a $|\mathbf{m}|$-bit cleartext
 input; since space is usually not a bottleneck for most applications. 
 
 \baheem\ is the only symmetric cipher to-date that is \emph{practical} and
 \emph{provably secure}.  Other ciphers are only one of them, but not both.
 For example, the \gls{otp} is provably secure but usually impractical, as
 it requires pre-sharing a key that is as large as the message to encrypt.
-On the other hand, state of art ciphers, such as ChaCha20 \cite{chacha20}
+On the other hand, state of art ciphers, such as ChaCha20
 or AES \cite{aes}, are practical but not provably secure.
 
 \blfootnote{}
-\blfootnote{\doclicenseThis}
+\blfootnote{\vspace{-1.5em}\doclicenseThis}
 \vfill
 \break
 
@@ -158,10 +159,10 @@ here\footnote{\url{https://codeberg.org/rajululkahf/alyal}}.
 \tableofcontents
 
 \section{Introduction}
-Today's state of art symmetric ciphers, such as ChaCha20 or AES, are
-attractive for their practicality (requiring only a small, say, $256$-bit
-key to pre-share).  Their security is probable which is supported by the
-failure of the many attempts to break them so far.
+State of art symmetric ciphers, such as ChaCha20 or AES, are attractive for
+their practicality (requiring only a small, say, a $256$-bit key to
+pre-share).  Their security is probable, but not provable, which is
+supported by the failure of the many attempts to break them so far.
 
 However, it remains unknown whether they are actually secure.  It is even
 unknown if it is possible for a function in their class to exist, since it
@@ -171,10 +172,10 @@ networks.  Should such ciphers be discovered to be broken, the previously
 encrypted data are effectively exposed.  In other words, such ciphers offer
 the following trade-off:
 
-\begin{tradeoff}
-    \emph{Enjoy} pre-sharing in advance only a small key
+\begin{tradeoff}[State of art]
+    \emph{\underline{Enjoy}} pre-sharing in advance only a small key
     $|\mathbf{k}|=256$, and $|\mathbf{\hat m}| = |\mathbf{m}|$.
-    \emph{In return to} giving up provable security.
+    \emph{\underline{In return}} give up provable security.
     \label{tradeoff_otp}
 \end{tradeoff}
 
@@ -191,11 +192,11 @@ in advance of the communication, which is too difficult to satisfy with
 most application scenarios.  In other words, \gls{otp} offers the following
 trade-off:
 
-\begin{tradeoff}
-    \emph{Enjoy} $\entropy(\mathbf{m})$-bit provable security, and
-    $|\mathbf{\hat m}| = |\mathbf{m}|$.
-    \emph{In return to} pre-sharing in advance a random pad that is as
-    large as the size of the sum of all messages that you will be
+\begin{tradeoff}[\gls{otp}]
+    \emph{\underline{Enjoy}} $\entropy(\mathbf{m})$-bit provable security,
+    and $|\mathbf{\hat m}| = |\mathbf{m}|$.
+    \emph{\underline{In return}} pre-share in advance a random pad that is
+    as large as the size of the sum of all messages that you will be
     exchanging in the future.  For example, it could be that $|\mathbf{k}|
     > 8 \times 10^{12}$ (terabytes).
     \label{tradeoff_otp}
@@ -206,17 +207,31 @@ the \emph{practically} secure (but not provably) ciphers like ChaCha20 or
 AES, in order to avoid the unscalable constraint of having to exchange
 large random bits in advance of their communication.
 
-\baheem\ essentially offers a unique trade-off in order to save provable
-security, while maintaining practicality for most applications.
-Specifically:
+\baheem\ offers a unique trade-off in order to save provable security,
+while maintaining practicality for most applications. Specifically:
 
-\begin{tradeoff}
-    \emph{Enjoy} pre-sharing in advance only a $128$-bit key, with
-    $\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$-bit provable
+\begin{tradeoff}[\baheem]
+    \emph{\underline{Enjoy}} pre-sharing in advance only a $128$-bit key,
+    and a $\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$-bit provable
     security.
-    \emph{In return to} $|\mathbf{\hat m}| \approx 2|\mathbf{m}|$.
+    \emph{\underline{In return}} $|\mathbf{\hat m}| \approx 2|\mathbf{m}|$.
     \label{tradeoff_baheem}
 \end{tradeoff}
+
+\Cref{tradeoff_baheem} is quite interesting as it does not require
+excessive planing in advance (as in the \gls{otp} case) with a compromise
+that is only a polynomial increase in space, which is highly tolerable in
+most real world scenarios, or even unnoticeable.
+
+Common applications, such as instant messaging, emails, monetary
+transactions, password databases, etc, often exchange small enough data
+that effectively make the use of \baheem\ unnoticeable from an end user
+perspective.
+
+The tests in \cref{sec_benchmark} show that the run-time difference between
+\alyal's \baheem\ and OpenSSL's ChaCha20 implementations are extremely
+similar when encrypting and decrypting a $500$ megabytes file, supporting
+that \baheem's space overhead is negligible in practice.
 
 
 \section{Proposed Algorithm: \baheem}
@@ -277,7 +292,8 @@ $\mathbf{m}_0, \mathbf{m}_1, \ldots,
 \end{algorithm}
 
 \section{Security Analysis}
-The \baheem\ encryption is essentially the \gls{xor} cryptosystem:
+The \baheem\ encryption is a variation of Shannon's \gls{otp}, the
+\gls{xor} cryptosystem:
 \[
     \mathbf{\hat m}_b \gets \mathbf{m}_b \oplus
     \underbrace{
@@ -440,7 +456,7 @@ $\entropy(\mathbf{m}_b)$-bits secure, whichever is smaller.
 \end{theorem}
 
 
-\section{Benchmark}
+\section{Benchmark}\label{sec_benchmark}
 This is a benchmark that was performed on a computer with a 3.4GHz Intel
 Core i5-3570K CPU, 32GB RAM, 7200 RPM hard disks, Linux
 5.17.4-gentoo-x86-64, OpenSSL 1.1.1n and Alyal v3.
@@ -487,54 +503,17 @@ a slower encryption run-time. However:
 \end{enumerate}
 
 \section{Conclusions}
-This paper proposed \baheem\ with the following properties:
-\begin{description}[itemsep=0em]
-    \item[Provably secure:] No cryptanalysis can degrade its
-        security below $\min[\entropy(\mathbf{m}), \entropy(\mathbf{k})]$
-        bits.
-
-    \item[Fast:] Requires only three additions (one per-session, two
-        per-block) and a single \gls{xor} per encryption or decryption
-        alike.
-
-        Highly parallelisable as the encryption, or decryption, of any bit
-        is independent of other bits.
-
-        \baheem's single-threaded prototype, \alyal, outperformed OpenSSL's
-        ChaCha20 when decrypting files, despite \baheem's $1$-bit overhead,
-        which demonstrates that such overhead is negligible in practice.
-
-        While the prototype has a slower encryption run-time due to its use
-        of a \gls{trng}, optimising it is trivial by preparing the
-        \gls{trng} in advance.
-
-    \item[Simple:] \baheem's simplicity implies fewer expected number of
-        implementation bugs, and therefore higher practical security.
-
-        Another interesting advantage of this simplicity is that it allows
-        \baheem\ to be used with a mere pen and a paper should one lack a
-        computer, such as the case with post-apocalyptic scenarios.
-
-        For example, in a post-apocalyptic scenario, one can generate the
-        random numbers $\mathbf{p}_b$ and $\mathbf{q}_b$ by rolling dies
-        enough number of times until adequate entropy is obtained, and then
-        using a pen and a paper to calculate the ciphertext as per
-        \cref{alg_enc}.
-
-        Since \baheem\ does not require repeating rounds over and over,
-        \baheem\ is significantly simpler to perform using a pen and a
-        paper than, say, ChaCha20, AES \cite{aes}, etc, which require many
-        repeated rounds that make it too tedious for a human to perform by
-        the pen and paper method.
-\end{description}
+This paper described \baheem; a practical, provably secure, simple and fast
+symmetric cipher.
 
 \bibliographystyle{unsrt}
 \bibliography{references}
 
+\vfill
+\break
+
 \appendix
 \section{Implementation Examples}
-\subsection{Pens, Papers and Fair Dies}
-
 \subsection{C Functions}
 \Cref{lst_baheem_session_enc,lst_baheem_session_dec} show example C
 functions for encrypting and decrypting session keys.
