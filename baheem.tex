@@ -46,6 +46,7 @@
 \newacronym{trng}{TRNG}{true random number generator}
 \newacronym{otp}{OTP}{one-time pad}
 \newacronym{xor}{XOR}{bitwise exclusive-or operation}
+\newtheorem{note}{Note}
 \newtheorem{lemma}{Lemma}
 \newtheorem{theorem}{Theorem}
 \newtheorem{tradeoff}{Trade-off}
@@ -240,13 +241,15 @@ the process is repeated over every $128$-bit blocks of $\mathbf{m}$:
 $\mathbf{m}_0, \mathbf{m}_1, \ldots,
 \mathbf{m}_{\lceil\frac{|\mathbf{m}|}{128}\rceil}$.
 
-A block-size of $128$-bit is adopted in this section for its implementation
-simplicity with common hardware.  However, it is trivial to adjust the
-block size to any other one, including a variable length block size that is
-as long as the message itself (which can be simpler for a when \baheem\
-encryption and decryption is performed manually by a pen and a paper).
+The reason for choosing a $128$-bit block is only for its implementation
+simplicity with common hardware.  An $|\mathbf{m}|$-bit block could be more
+suitable for the pen and paper method.
 
-\begin{algorithm}
+Communicating peers do not have to exchange a new session key $\mathbf{s}$
+with every message that they send.  It suffices them to exchange it only
+with their first message, and then re-use it indefinitely.
+
+\begin{algorithm}[tbh]
     \SetKwInOut{Input}{input}
     \SetKwInOut{Output}{output}
     \Input{$\mathbf{k}, \mathbf{m}_0, \mathbf{m}_1, \ldots$}
@@ -272,7 +275,7 @@ encryption and decryption is performed manually by a pen and a paper).
     \label{alg_enc}
 \end{algorithm}
 
-\begin{algorithm}
+\begin{algorithm}[tbh]
     \SetKwInOut{Input}{input}
     \SetKwInOut{Output}{output}
     \Input{$
@@ -296,6 +299,7 @@ encryption and decryption is performed manually by a pen and a paper).
     \caption{\baheem\ decryption}
     \label{alg_dec}
 \end{algorithm}
+
 
 \section{Security Analysis}
 The \baheem\ encryption is a variation of Shannon's \gls{otp}, the
