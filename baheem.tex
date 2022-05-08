@@ -240,6 +240,12 @@ the process is repeated over every $128$-bit blocks of $\mathbf{m}$:
 $\mathbf{m}_0, \mathbf{m}_1, \ldots,
 \mathbf{m}_{\lceil\frac{|\mathbf{m}|}{128}\rceil}$.
 
+A block-size of $128$-bit is adopted in this section for its implementation
+simplicity with common hardware.  However, it is trivial to adjust the
+block size to any other one, including a variable length block size that is
+as long as the message itself (which can be simpler for a when \baheem\
+encryption and decryption is performed manually by a pen and a paper).
+
 \begin{algorithm}
     \SetKwInOut{Input}{input}
     \SetKwInOut{Output}{output}
@@ -503,8 +509,15 @@ a slower encryption run-time. However:
 \end{enumerate}
 
 \section{Conclusions}
-This paper described \baheem; a practical, provably secure, simple and fast
-symmetric cipher.
+
+This paper described \baheem; a provably-secure, yet practical, symmetric
+cipher.  \baheem is variation of Shannon's \gls{otp}, where the one-time
+pad is securely derived from a $128$-bit pre-shared key, in a way to solve
+\gls{otp}'s key impracticality of requiring a pre-shared key that is as
+large as the sum of all message to encrypt in the future.  The trade-off of
+\baheem\ is practically quite negligible as confirmed by benchmarks
+presented in this paper, which is that the ciphertext is approximately
+twice as large as the cleartext.
 
 \bibliographystyle{unsrt}
 \bibliography{references}
