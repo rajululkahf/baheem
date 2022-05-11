@@ -1,3 +1,7 @@
+**Warning: terribly broken cipher**
+
+----
+
 [Alyal](https://codeberg.org/rajululkahf/alyal) is a file encryption and
 decryption tool based on [Băhēm](https://codeberg.org/rajululkahf/baheem).
 
